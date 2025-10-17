@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Lector ticket Mercadona</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  // Activa el tema oscuro de Bootstrap si el sistema está en dark
+  (function(){
+    const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    function applyTheme(e){ 
+      if (e.matches) { document.documentElement.setAttribute('data-bs-theme','dark'); }
+      else { document.documentElement.removeAttribute('data-bs-theme'); }
+    }
+    if (mq) {
+      applyTheme(mq);
+      mq.addEventListener ? mq.addEventListener('change', applyTheme) : mq.addListener(applyTheme);
+    }
+  })();
+</script>
+
+<!-- Bootstrap 5 (sin SRI para evitar bloqueos) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+<!-- Librerías -->
+<script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+  }
+</script>
+<script src="https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+  .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  /* Chips de categoría */
+  .chip { border: 1px solid rgba(0,0,0,.125); }
+  .chip.active { color:#fff; border-color: transparent; }
+  .chip[data-cat="alberto"].active { background:#dc3545; } /* rojo */
+  .chip[data-cat="kike"].active    { background:#0d6efd; } /* azul */
+  .chip[data-cat="comun"].active   { background:#ffc107; color:#111; } /* amarillo */
+
+  /* Resaltado de fila por categoría: fondo suave + barra izquierda */
+  tr.cat-alberto { background: #fde2e4; box-shadow: inset 4px 0 0 0 #dc3545; }
+  tr.cat-kike    { background: #e7f0ff; box-shadow: inset 4px 0 0 0 #0d6efd; }
+  tr.cat-comun   { background: #fff6d6; box-shadow: inset 4px 0 0 0 #ffc107; }
+
+  /* Asegura que el color llega a las celdas (Bootstrap pinta bg en <td>) */
+  tbody tr.cat-alberto > * { background-color: #fde2e4 !important; }
+  tbody tr.cat-kike    > * { background-color: #e7f0ff !important; }
+  tbody tr.cat-comun   > * { background-color: #fff6d6 !important; }
+
+  /* Resumen de categorías */
+  .catsum-grid { display:flex; flex-wrap:wrap; gap:.5rem; }
+  .catsum-grid .tag { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .6rem; border-radius:.5rem; background:#f8f9fa; border:1px solid #e9ecef; font-size:.9rem; }
+  .catsum-grid .n { font-variant-numeric: tabular-nums; }
+
+  /* Tarjeta para exportar como imagen */
+  .export-card {
+    width: 900px; background: #ffffff; color: #111827;
+    border: 1px solid #e5e7eb; border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    padding: 16px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  }
+  .export-card h2 { margin: 0 0 8px; font-size: 20px; }
+  .export-card .meta { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+  .export-card table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
+  .export-card th, .export-card td { border: 1px solid #e5e7eb; padding: 8px; }
+  .export-card th { text-align: left; background: #f9fafb; }
+  .export-card .right { text-align: right; font-variant-numeric: tabular-nums; }
+  .export-card .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .export-card .total { font-weight: 700; }
+  .hdr-alberto { color:#dc3545; }
+  .hdr-kike   { color:#0d6efd; }
+  .hdr-comun  { color:#ffc107; }
+
+  /* Contenedor offscreen para render */
+  #export-root { position: fixed; left: -200vw; top: 0; }
+
+  /* Tabla responsive y columna Descripción controlada */
+  .table-wrap { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  td.td-desc, th.th-desc {
+    max-width: 40ch;   /* controla anchura en desktop */
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* --------- Dark mode (Bootstrap 5.3 via data-bs-theme) --------- */
+  :root[data-bs-theme="dark"] body.bg-light { background-color:#0b0f14 !important; }
+  :root[data-bs-theme="dark"] body { color: var(--bs-body-color); }
+  :root[data-bs-theme="dark"] .card { background-color:#0f1720; color: var(--bs-body-color); }
+  :root[data-bs-theme="dark"] .card.shadow-sm { box-shadow: 0 6px 18px rgba(0,0,0,0.5) !important; }
+  :root[data-bs-theme="dark"] .table { --bs-table-bg: transparent; color: var(--bs-body-color); }
+  :root[data-bs-theme="dark"] .table thead { background-color: var(--bs-tertiary-bg); color: var(--bs-body-color); }
+  :root[data-bs-theme="dark"] .table tbody tr { border-color: var(--bs-border-color); }
+  :root[data-bs-theme="dark"] .catsum-grid .tag { background: var(--bs-tertiary-bg); border-color: var(--bs-border-color); color: var(--bs-body-color); }
+  :root[data-bs-theme="dark"] .text-muted, 
+  :root[data-bs-theme="dark"] .text-secondary { color: #9ca3af !important; }
+  :root[data-bs-theme="dark"] .chip { border-color: var(--bs-border-color); color: var(--bs-body-color); }
+  :root[data-bs-theme="dark"] .chip[data-cat="comun"].active { color:#111; }
+  /* Inputs en oscuro */
+  :root[data-bs-theme="dark"] .form-control {
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    border-color: var(--bs-border-color);
+  }
+  :root[data-bs-theme="dark"] .form-control::file-selector-button {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+    border: 1px solid var(--bs-border-color);
+  }
+  /* Tintes por categoría en oscuro */
+  :root[data-bs-theme="dark"] tbody tr.cat-alberto > * { background-color:#3b1116 !important; }
+  :root[data-bs-theme="dark"] tbody tr.cat-kike    > * { background-color:#0f1c35 !important; }
+  :root[data-bs-theme="dark"] tbody tr.cat-comun   > * { background-color:#352b0f !important; }
+
+  /* En móvil: compáctalo todo */
+  @media (max-width: 576px) {
+    .table { font-size: .92rem; }
+    td, th { padding: .5rem .5rem; }
+    td.td-desc, th.th-desc { max-width: 24ch; }  /* descripción más contenida */
+    .chip.btn { padding: .15rem .45rem; font-size: .78rem; }
+  }
+</style>
+</head>
+<body class="bg-light">
+  <div class="container py-3">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h1 class="h5 m-0">Lector de ticket (Mercadona)</h1>
+      <span id="progress" class="text-secondary small"></span>
+    </div>
+
+    <!-- Controles -->
+    <div class="row g-2 align-items-center mb-2">
+      <div class="col-12 col-sm-auto">
+        <input id="file" type="file" accept="application/pdf,.pdf" class="form-control">
+      </div>
+      <div class="col-12 col-sm-auto">
+        <button id="btnParse" class="btn btn-primary">Procesar</button>
+      </div>
+    </div>
+
+    <!-- Meta + validación -->
+    <div id="meta" class="text-muted small mb-2"></div>
+    <div id="check" class="small mb-2 text-muted"></div>
+
+    <!-- Tabla -->
+    <div class="table-wrap card shadow-sm">
+      <div class="table-responsive">
+        <table id="tbl" class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width:90px;">Nº</th>
+              <th class="th-desc">Descripción</th>
+              <th style="width:210px; min-width:190px;">Categoría</th>
+              <th class="text-end" style="width:140px;">Importe (€)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="4" class="text-muted">Carga un PDF y pulsa “Procesar”.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Resumen categorías -->
+    <div id="catsum" class="mt-2"></div>
+
+    <!-- Botón Exportar al final -->
+    <div class="d-grid gap-2 mt-2">
+      <button id="btnExport" class="btn btn-outline-secondary" title="Asigna categoría a todas las filas para exportar" disabled>
+        Exportar resumen por categorías
+      </button>
+    </div>
+
+    <!-- Offscreen export root -->
+    <div id="export-root" aria-hidden="true"></div>
+  </div>
+
+<script>
+const $file = document.getElementById('file');
+const $btn = document.getElementById('btnParse');
+const $tbl = document.getElementById('tbl').querySelector('tbody');
+const $progress = document.getElementById('progress');
+const $meta = document.getElementById('meta');
+const $check = document.getElementById('check');
+const $catsum = document.getElementById('catsum');
+const $btnExport = document.getElementById('btnExport');
+const $exportRoot = document.getElementById('export-root');
+
+// Estado de categorías
+const categoryMap = new Map(); // key -> 'alberto' | 'kike' | 'comun'
+let currentItems = [];
+let itemsByKey = new Map();
+function itemKey(it) {
+  return [String(it.quantity), String(it.description), String(it.unit), String(it.amount)].join('|');
+}
+
+const toNumberEUR = (s) => {
+  if (typeof s !== "string") s = String(s ?? "");
+  s = s.replace(/\s+/g,"").replace(/[€\u0080]/g,"").replace(/\./g,"").replace(",",".");
+  const n = Number(s);
+  return isFinite(n) ? n : NaN;
+};
+const toEUR = (n) => isFinite(n) ? n.toLocaleString("es-ES",{minimumFractionDigits:2, maximumFractionDigits:2}) : "0,00";
+function nearlyEqual(a,b,eps=0.01){ return isFinite(a)&&isFinite(b)&&Math.abs(a-b) <= eps; }
+
+function parseFilenameTotal(name){
+  const m = String(name||"").match(/(\d{1,3}(?:\.\d{3})*,\d{2})/);
+  return m ? toNumberEUR(m[1]) : NaN;
+}
+
+function setProgress(msg){ $progress.textContent = msg || ""; }
+function setCheckNone(){ $check.innerHTML = '<span class="text-muted">— Validación pendiente —</span>'; }
+function setCheck(filename, totalCalc){
+  const expected = parseFilenameTotal(filename);
+  if (!isFinite(expected)) {
+    $check.innerHTML = '<span class="text-muted">No se encontró importe en el nombre del archivo.</span>';
+    return;
+  }
+  if (nearlyEqual(expected, totalCalc)) {
+    $check.innerHTML = `<span class="text-success fw-bold">✅ Coincide</span> <span class="text-secondary">(archivo: ${toEUR(expected)} • calculado: ${toEUR(totalCalc)})</span>`;
+  } else {
+    $check.innerHTML = `<span class="text-danger fw-bold">❌ No coincide</span> <span class="text-secondary">(archivo: ${toEUR(expected)} • calculado: ${toEUR(totalCalc)})</span>`;
+  }
+}
+
+function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+function setTable(items){
+  if(!items || items.length===0){
+    $tbl.innerHTML = `<tr><td colspan="4" class="text-muted">No se detectaron líneas de producto.</td></tr>`;
+    setCheckNone();
+    $catsum.textContent = '';
+    currentItems = [];
+    itemsByKey = new Map();
+    categoryMap.clear();
+    updateExportButtonState();
+    return 0;
+  }
+  currentItems = items.slice();
+  itemsByKey = new Map();
+  let html = "";
+  let total = 0;
+  for(const r of items){
+    const key = itemKey(r);
+    itemsByKey.set(key, r);
+    total += r.amount;
+    const cat = categoryMap.get(key) || '';
+    html += `<tr data-key="${escapeHtml(key)}" class="${cat ? 'cat-'+cat : ''}">
+      <td class="mono">${r.quantity}</td>
+      <td class="td-desc">${escapeHtml(r.description)}</td>
+      <td class="text-nowrap">
+        <button type="button" class="chip btn btn-sm ${cat==='alberto'?'active':''}" data-cat="alberto">Alberto</button>
+        <button type="button" class="chip btn btn-sm ${cat==='kike'?'active':''}" data-cat="kike">Kike</button>
+        <button type="button" class="chip btn btn-sm ${cat==='comun'?'active':''}" data-cat="comun">Común</button>
+      </td>
+      <td class="text-end mono">${toEUR(r.amount)}</td>
+    </tr>`;
+  }
+  html += `<tr class="table-light">
+    <td></td>
+    <td class="fw-bold">TOTAL</td>
+    <td></td>
+    <td class="text-end mono fw-bold">${toEUR(total)}</td>
+  </tr>`;
+  $tbl.innerHTML = html;
+  updateCategorySummary();
+  updateExportButtonState();
+  return total;
+}
+
+function updateCategorySummary() {
+  const sums = { alberto: {n:0, total:0}, kike: {n:0, total:0}, comun: {n:0, total:0} };
+  for (const [key, cat] of categoryMap.entries()) {
+    const it = itemsByKey.get(key);
+    if (!it) continue;
+    if (!sums[cat]) continue;
+    sums[cat].n += 1;
+    sums[cat].total += Number(it.amount) || 0;
+  }
+  $catsum.innerHTML =
+    '<div class="catsum-grid">' +
+    `<span class="tag"><strong class="text-danger">Alberto</strong> <span class="n">(${sums.alberto.n}) ${toEUR(sums.alberto.total)}</span></span>` +
+    `<span class="tag"><strong class="text-primary">Kike</strong> <span class="n">(${sums.kike.n}) ${toEUR(sums.kike.total)}</span></span>` +
+    `<span class="tag"><strong class="text-warning">Común</strong> <span class="n">(${sums.comun.n}) ${toEUR(sums.comun.total)}</span></span>` +
+    '</div>';
+}
+
+/* Habilita/Deshabilita export según estén todas las filas categorizadas */
+function updateExportButtonState() {
+  const rows = Array.from(document.querySelectorAll('#tbl tbody tr[data-key]'));
+  if (rows.length === 0) {
+    $btnExport.disabled = true;
+    $btnExport.title = 'No hay productos para exportar';
+    return;
+  }
+  let assigned = 0;
+  for (const tr of rows) {
+    const key = tr.getAttribute('data-key');
+    if (key && categoryMap.has(key)) assigned++;
+  }
+  const allAssigned = assigned === rows.length;
+  $btnExport.disabled = !allAssigned;
+  $btnExport.title = allAssigned
+    ? 'Exportar una única imagen con todas las categorías'
+    : 'Asigna categoría a todas las filas para exportar';
+}
+
+function ensureRowCategoryUI(tr, key) {
+  const cat = categoryMap.get(key) || '';
+  tr.classList.remove('cat-alberto','cat-kike','cat-comun');
+  if (cat) tr.classList.add('cat-' + cat);
+  tr.querySelectorAll('.chip').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-cat') === cat);
+  });
+}
+
+// ----- Export: una sola imagen con todas las categorías no vacías -----
+function friendlyCat(cat) {
+  return cat === 'alberto' ? 'Alberto' : (cat === 'kike' ? 'Kike' : 'Común');
+}
+function buildExportCard(cat, items) {
+  const wrap = document.createElement('div');
+  wrap.className = 'export-card';
+  const total = items.reduce((a,b)=> a + (Number(b.amount)||0), 0);
+  const now = new Date();
+  const meta = `${now.toLocaleDateString('es-ES')} · ${now.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;
+  wrap.innerHTML = `
+    <h2 class="hdr-${cat}">Lista de ${friendlyCat(cat)}</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:100px;">Nº</th>
+          <th>Descripción</th>
+          <th class="right" style="width:150px;">Importe (€)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(it => `
+          <tr>
+            <td class="mono">${escapeHtml(String(it.quantity))}</td>
+            <td>${escapeHtml(String(it.description))}</td>
+            <td class="right mono">${toEUR(Number(it.amount))}</td>
+          </tr>
+        `).join('')}
+        <tr>
+          <td></td>
+          <td class="total">TOTAL</td>
+          <td class="right mono total">${toEUR(total)}</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+  return wrap;
+}
+async function exportCategoryImages() {
+  if (!window.html2canvas) {
+    alert('No se pudo cargar html2canvas.');
+    return;
+  }
+  // Recopilar items por categoría respetando el orden actual de la tabla
+  const cats = ['alberto','kike','comun'];
+  const byCat = { alberto: [], kike: [], comun: [] };
+  for (const tr of document.querySelectorAll('#tbl tbody tr[data-key]')) {
+    const key = tr.getAttribute('data-key');
+    if (!key) continue;
+    const cat = categoryMap.get(key);
+    const it = itemsByKey.get(key);
+    if (cat && it) byCat[cat].push(it);
+  }
+
+  // Construir un wrapper con título y una tarjeta por cada categoría no vacía
+  const wrapper = document.createElement('div');
+  wrapper.style.width = '980px';
+  wrapper.style.background = '#fff';
+  wrapper.style.padding = '16px';
+  wrapper.style.border = '1px solid #e5e7eb';
+  wrapper.style.borderRadius = '12px';
+  wrapper.style.boxShadow = '0 6px 18px rgba(0,0,0,0.08)';
+
+  const title = document.createElement('h1');
+  title.textContent = 'Resumen por categorías';
+  title.style.fontSize = '22px';
+  title.style.margin = '0 0 10px';
+  wrapper.appendChild(title);
+
+  const meta = document.createElement('div');
+  meta.textContent = new Date().toLocaleString('es-ES');
+  meta.style.color = '#6b7280';
+  meta.style.fontSize = '12px';
+  meta.style.marginBottom = '12px';
+  wrapper.appendChild(meta);
+
+  let added = 0;
+  for (const cat of cats) {
+    const arr = byCat[cat];
+    if (!arr.length) continue;
+    const card = buildExportCard(cat, arr);
+    card.style.marginBottom = '16px';
+    wrapper.appendChild(card);
+    added++;
+  }
+
+  if (!added) {
+    alert('No hay categorías con elementos para exportar.');
+    return;
+  }
+
+  // Render y descarga como una sola imagen
+  $exportRoot.appendChild(wrapper);
+  const canvas = await html2canvas(wrapper, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'listas_categorias.png';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+  wrapper.remove();
+}
+
+// ----- Normalización OCR y utilidades de precio -----
+function normalizeLine(s){
+  s = String(s||"");
+  s = s.replace(/(\d)[oO](\d)/g, '$10$2');       // 1O2 -> 102
+  s = s.replace(/,(\d)[sS]\b/g, ',$15');         // 18,4S -> 18,45
+  s = s.replace(/,(\d)[oO]\b/g, ',$10');         // 18,4O -> 18,40
+  s = s.replace(/\s*[€\u0080]\s*/g, ' €');       // espacios € 
+  s = s.replace(/\s{2,}/g,' ').trim();
+  return s;
+}
+function findLastPrice(str){
+  const s = normalizeLine(str);
+  const m = s.match(/(\d{1,3}(?:\.\d{3})*,\d{1,2})(?:\s*[€\u0080])?(?!.*\d)/);
+  if (!m) return null;
+  let val = m[1];
+  if (/,\d$/.test(val)) val = val + '0';
+  return val;
+}
+
+// Delegación chips
+document.getElementById('tbl').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('.chip');
+  if (!btn) return;
+  const tr = ev.target.closest('tr');
+  if (!tr) return;
+  const key = tr.getAttribute('data-key');
+  if (!key) return;
+  const cat = btn.getAttribute('data-cat'); // 'alberto' | 'kike' | 'comun'
+  const was = categoryMap.get(key) || '';
+  const next = (was === cat) ? '' : cat;
+  if (next) categoryMap.set(key, next); else categoryMap.delete(key);
+  ensureRowCategoryUI(tr, key);
+  updateCategorySummary();
+  updateExportButtonState();
+});
+
+// --- Lectura PDF a líneas (texto embebido) ---
+async function pdfToTextLines(buf){
+  const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+  const lines = [];
+  let textItems = 0;
+  for(let p=1;p<=pdf.numPages;p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    textItems += (content.items||[]).length;
+    const byY = new Map();
+    for(const it of content.items){
+      const str = it.str || "";
+      const tr = it.transform; const y = tr ? tr[5] : 0; const x = tr ? tr[4] : 0;
+      const key = Math.round(y/2);
+      if(!byY.has(key)) byY.set(key, []);
+      byY.get(key).push({x, text: str});
+    }
+    const ys = Array.from(byY.keys()).sort((a,b)=>b-a);
+    for(const y of ys){
+      const chunks = byY.get(y).sort((a,b)=>a.x-b.x).map(c=>c.text);
+      const line = chunks.map(c=>String(c||"").trim()).join(" ").replace(/\s{2,}/g," ").trim();
+      if(line) lines.push(line);
+    }
+  }
+  return {lines, textItems};
+}
+
+// --- OCR PDF (render -> Tesseract) ---
+async function pdfToTextLinesOCR(buf){
+  if(!window.Tesseract) throw new Error("No se cargó Tesseract.js");
+  const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+  const lines = [];
+  for(let p=1;p<=pdf.numPages;p++){
+    setProgress(`OCR página ${p}/${pdf.numPages}…`);
+    const page = await pdf.getPage(p);
+    const viewport = page.getViewport({scale: 2});
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', {willReadFrequently:true});
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    await page.render({canvasContext:ctx, viewport}).promise;
+    const dataUrl = canvas.toDataURL('image/png');
+    const res = await Tesseract.recognize(dataUrl, 'spa+eng', { logger: () => {} });
+    const text = res.data && res.data.text ? res.data.text : "";
+    const pageLines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    lines.push(...pageLines);
+  }
+  return lines;
+}
+
+function nextNonEmpty(arr, i){
+  let j = i+1;
+  while(j < arr.length){
+    const s = String(arr[j]||"").trim();
+    if (s) return { index: j, text: s };
+    j++;
+  }
+  return { index: -1, text: "" };
+}
+
+// Recorte de sección
+function filterProductsSection(lines){
+  const L = lines.map(s => normalizeLine(String(s||"").trim()));
+  const looksLikeProduct = (s, next) =>
+    /^\s*\d+\s+.+\s+\d+,\d{2}(?:\s+\d+,\d{2})?\s*$/.test(s) ||
+    (/^\D{2,}$/.test(s) && /\b(kg|g|l)\b.*\d+,\d{2}.*\d+,\d{2}/i.test(next||"")) ||
+    (/^\s*\d+\s+\D+/.test(s) && /\b(kg|g|l)\b.*\d+,\d{2}.*\d+,\d{2}/i.test((next||""))) ||
+    (/^\s*\d+\s+\D+/.test(s) && !!findLastPrice(next||""));
+
+  let start = -1, end = L.length;
+  for (let i=0;i<L.length;i++){
+    const s = L[i] && L[i].trim();
+    if (!s) continue;
+    if (/^TOTAL\b/i.test(s) || /^TOTAL\s*[:€]/i.test(s) || /^TOTAL\s+(\d+|\d{1,3}(\.\d{3})*,\d{2})/i.test(s)) {
+      end = i; break;
+    }
+  }
+  for (let i=0;i<end;i++){
+    const s = L[i] && L[i].trim(); if(!s) continue;
+    const { text: next } = nextNonEmpty(L, i);
+    if (looksLikeProduct(s, next)) { start = i; break; }
+  }
+  if (start >= 0) return L.slice(start, end).filter(Boolean);
+  return L.filter(Boolean);
+}
+
+// Parser
+function parseProducts(lines){
+  const isNoise = (s) => /(IVA\b|BASE IMPONIBLE|CUOTA\b|TARJ|MASTERCARD|EFECTIVO|FACTURA|SE ADMITEN DEVOLUCIONES|CAMBIO)/i.test(s);
+  const clean = (s) => String(s||"").replace(/\s{2,}/g," ").trim();
+
+  const out = [];
+  const push = (q, d, u, a) => {
+    const quantity = Number(String(q).replace(",", "."));
+    const amount = toNumberEUR(a);
+    let unit = u ? toNumberEUR(u) : NaN;
+    if(!isFinite(unit) || unit<=0){ unit = quantity>0 ? amount/quantity : amount; }
+    if(!isFinite(quantity) || quantity<=0 || !isFinite(amount)) return;
+    if(!d || d.length<2) return;
+    out.push({quantity, description:d, unit:Number(unit.toFixed(2)), amount:Number(amount.toFixed(2))});
+  };
+
+  const N = lines.map(clean).map(normalizeLine).filter(Boolean);
+
+  for(let i=0;i<N.length;i++){
+    const row = N[i];
+    if (/^TOTAL\b/i.test(row) || /^TOTAL\s*[:€]/i.test(row)) break;
+    if (isNoise(row)) continue;
+
+    let m = row.match(/^\s*(\d+)\s+(.+?)\s+(\d+,\d{2})(?:\s*[€\u0080])?\s+(\d+,\d{2})(?:\s*[€\u0080])?.*$/);
+    if(m){ push(m[1], m[2], m[3], m[4]); continue; }
+
+    m = row.match(/^\s*(\d+)\s+(.+?)\s+(\d+,\d{2})(?:\s*[€\u0080])?.*$/);
+    if(m){ push(m[1], m[2], null, m[3]); continue; }
+
+    if(/^\D{2,}$/.test(row)){
+      const { index: j, text: next } = nextNonEmpty(N, i);
+      if (j !== -1) {
+        const m2 = next.match(/^\s*([\d.,]+)\s*(kg|g|l)\b.*?(\d+,\d{2}).*?(\d+,\d{2})\s*$/i);
+        if(m2){
+          const qtyW = Number(m2[1].replace(",", "."));
+          push(qtyW, row, m2[3], m2[4]);
+          i = j;
+          continue;
+        }
+      }
+    }
+
+    m = row.match(/^\s*(\d+)\s+(.+?)\s*$/);
+    if(m){
+      const desc = m[2];
+      const { index: j, text: next } = nextNonEmpty(N, i);
+      if (j !== -1) {
+        const m2 = next.match(/^\s*([\d.,]+)\s*(kg|g|l)\b.*?(\d+,\d{2}).*?(\d+,\d{2})\s*$/i);
+        if (m2){
+          const qtyW = Number(m2[1].replace(",", "."));
+          push(qtyW, desc, m2[3], m2[4]);
+          i = j;
+          continue;
+        }
+      }
+    }
+
+    // C3) "1 DESCRIPCIÓN" + siguiente con precio en cualquier parte
+    m = row.match(/^\s*(\d+)\s+(.+?)\s*$/);
+    if (m) {
+      const qty = m[1];
+      const desc = m[2];
+      const { index: j, text: next } = nextNonEmpty(N, i);
+      if (j !== -1) {
+        const p = findLastPrice(next);
+        if (p) {
+          push(qty, desc, null, p);
+          i = j;
+          continue;
+        }
+      }
+    }
+
+    const euros = row.match(/\d+,\d{2}/g);
+    if(euros && euros.length>=1){
+      const amount = euros[euros.length-1];
+      const unit = euros.length>=2 ? euros[euros.length-2] : null;
+      const leadQty = row.match(/^\s*(\d+)\s+/);
+      const qty = leadQty ? Number(leadQty[1]) : 1;
+      const cut = row.lastIndexOf(amount);
+      let desc = row.substring(leadQty ? leadQty[0].length : 0, cut).trim();
+      if(!desc) desc = row.replace(new RegExp(amount+"\\s*$"), "").trim();
+      if (/^(TOTAL|IVA|BASE IMPONIBLE|CUOTA)\b/i.test(desc)) continue;
+      push(qty, desc, unit, amount);
+      continue;
+    } else {
+      const p = findLastPrice(row);
+      if (p) {
+        const leadQty = row.match(/^\s*(\d+)\s+/);
+        const qty = leadQty ? Number(leadQty[1]) : 1;
+        const cut = row.lastIndexOf(p);
+        let desc = row.substring(leadQty ? leadQty[0].length : 0, cut).trim();
+        if(!desc) desc = row.replace(new RegExp(p+"\\s*$"), "").trim();
+        if (!/^(TOTAL|IVA|BASE IMPONIBLE|CUOTA)\b/i.test(desc)) {
+          push(qty, desc, null, p);
+          continue;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+function extractMeta(lines){
+  const txt = lines.join("\n");
+  const date = (txt.match(/\b(\d{2}\/\d{2}\/\d{4})\b/)||[])[1] || "";
+  const time = (txt.match(/\b(\d{2}:\d{2})\b/)||[])[1] || "";
+  const tienda = (txt.match(/MERCADONA/i) ? "Mercadona" : "");
+  $meta.textContent = [tienda && `Comercio: ${tienda}`, (date||time) && `Fecha/Hora: ${date} ${time}`].filter(Boolean).join("\n");
+}
+
+// Principal
+$btn.addEventListener('click', async () => {
+  const f = $file.files && $file.files[0];
+  if(!f){ alert("Selecciona un PDF."); return; }
+  if(!/\.pdf$/i.test(f.name)){ alert("Debe ser un PDF."); return; }
+
+  try{
+    setProgress("Cargando PDF...");
+    const buf = new Uint8Array(await f.arrayBuffer());
+    let lines = [];
+
+    const {lines: lns, textItems} = await pdfToTextLines(buf);
+    lines = lns;
+    if(!lines.length || textItems===0){
+      setProgress("Sin texto embebido. Haciendo OCR…");
+      lines = await pdfToTextLinesOCR(buf);
+    }
+
+    setProgress("Extrayendo productos…");
+    extractMeta(lines);
+    const section = filterProductsSection(lines);
+    const items = parseProducts(section);
+    categoryMap.clear();
+    const total = setTable(items);
+    setCheck(f.name, total);
+    setProgress("");
+  } catch (e){
+    console.error(e);
+    alert("No se pudo procesar el PDF.");
+    setProgress("");
+  }
+});
+
+$btnExport.addEventListener('click', exportCategoryImages);
+</script>
+</body>
+</html>
