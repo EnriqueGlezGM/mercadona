@@ -46,17 +46,18 @@
 
   /* Resaltado de fila por categoría: fondo suave + barra izquierda */
   tr.cat-alberto { background: #fde2e4; box-shadow: inset 4px 0 0 0 #dc3545; }
-  tr.cat-kike    { background: #e7f0ff; box-shadow: inset 4px 0 0 0 #0d6efd; }
+  tr.cat-kike    { background: #e7f0ff; box-shadow: inset 4px 0 0 0 #064fbc; }
   tr.cat-comun   { background: #fff6d6; box-shadow: inset 4px 0 0 0 #ffc107; }
 
   /* Asegura que el color llega a las celdas (Bootstrap pinta bg en <td>) */
   tbody tr.cat-alberto > * { background-color: #fde2e4 !important; }
-  tbody tr.cat-kike    > * { background-color: #e7f0ff !important; }
+  tbody tr.cat-kike    > * { background-color: #8eb6fa !important; }
   tbody tr.cat-comun   > * { background-color: #fff6d6 !important; }
 
   /* Resumen de categorías */
   .catsum-grid { display:flex; flex-wrap:wrap; gap:.5rem; }
   .catsum-grid .tag { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .6rem; border-radius:.5rem; background:#f8f9fa; border:1px solid #e9ecef; font-size:.9rem; }
+  .catsum-grid .tag { cursor: pointer; }
   .catsum-grid .n { font-variant-numeric: tabular-nums; }
 
   /* Tarjeta para exportar como imagen */
@@ -242,6 +243,11 @@ function setCheck(filename, totalCalc){
 
 function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
+function buildSearchURL(desc){
+  const q = encodeURIComponent(`${String(desc||'').trim()} Mercadona`);
+  return `https://www.google.com/search?q=${q}`;
+}
+
 function setTable(items){
   if(!items || items.length===0){
     $tbl.innerHTML = `<tr><td colspan="4" class="text-muted">No se detectaron líneas de producto.</td></tr>`;
@@ -264,7 +270,7 @@ function setTable(items){
     const cat = categoryMap.get(key) || '';
     html += `<tr data-key="${escapeHtml(key)}" class="${cat ? 'cat-'+cat : ''}">
       <td class="mono">${r.quantity}</td>
-      <td class="td-desc">${escapeHtml(r.description)}</td>
+      <td class="td-desc"><a class="desc-link" href="${buildSearchURL(r.description)}" target="_blank" rel="noopener">${escapeHtml(r.description)}</a></td>
       <td class="text-nowrap">
         <button type="button" class="chip btn btn-sm ${cat==='alberto'?'active':''}" data-cat="alberto">Alberto</button>
         <button type="button" class="chip btn btn-sm ${cat==='kike'?'active':''}" data-cat="kike">Kike</button>
@@ -296,11 +302,25 @@ function updateCategorySummary() {
   }
   $catsum.innerHTML =
     '<div class="catsum-grid">' +
-    `<span class="tag"><strong class="text-danger">Alberto</strong> <span class="n">(${sums.alberto.n}) ${toEUR(sums.alberto.total)}</span></span>` +
-    `<span class="tag"><strong class="text-primary">Kike</strong> <span class="n">(${sums.kike.n}) ${toEUR(sums.kike.total)}</span></span>` +
-    `<span class="tag"><strong class="text-warning">Común</strong> <span class="n">(${sums.comun.n}) ${toEUR(sums.comun.total)}</span></span>` +
+    `<span class="tag" data-total="${toEUR(sums.alberto.total)}" title="Click para copiar total de Alberto"><strong class="text-danger">Alberto</strong> <span class="n">(${sums.alberto.n}) ${toEUR(sums.alberto.total)}</span></span>` +
+    `<span class="tag" data-total="${toEUR(sums.kike.total)}" title="Click para copiar total de Kike"><strong class="text-primary">Kike</strong> <span class="n">(${sums.kike.n}) ${toEUR(sums.kike.total)}</span></span>` +
+    `<span class="tag" data-total="${toEUR(sums.comun.total)}" title="Click para copiar total de Común"><strong class="text-warning">Común</strong> <span class="n">(${sums.comun.n}) ${toEUR(sums.comun.total)}</span></span>` +
     '</div>';
 }
+
+$catsum.addEventListener('click', async (ev) => {
+  const tag = ev.target.closest('.tag');
+  if (!tag) return;
+  const val = tag.getAttribute('data-total') || '';
+  try {
+    await navigator.clipboard.writeText(val);
+    const old = tag.innerHTML;
+    tag.innerHTML = old + ' <span class="ms-1">📋</span>';
+    setTimeout(() => { tag.innerHTML = old; }, 1000);
+  } catch(e){
+    alert('No se pudo copiar al portapapeles');
+  }
+});
 
 /* Habilita/Deshabilita export según estén todas las filas categorizadas */
 function updateExportButtonState() {
@@ -701,8 +721,20 @@ async function processSelectedFile(){
     setProgress("");
   }
 }
+</script>
+<script>
 $file.addEventListener('change', processSelectedFile);
 $btnExport.addEventListener('click', exportCategoryImages);
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    if (!$file.files || $file.files.length === 0) {
+      setTimeout(() => {
+        if (typeof $file.showPicker === 'function') $file.showPicker();
+        else $file.click();
+      }, 400);
+    }
+  } catch (e) {}
+});
 </script>
 </body>
 </html>
