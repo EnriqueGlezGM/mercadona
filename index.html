@@ -245,7 +245,8 @@ function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, m => ({'&':'&am
 
 function buildSearchURL(desc){
   const q = encodeURIComponent(`${String(desc||'').trim()} Mercadona`);
-  return `https://www.google.com/search?q=${q}`;
+  // Google Images results
+  return `https://www.google.com/search?tbm=isch&q=${q}`;
 }
 
 function setTable(items){
