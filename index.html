@@ -88,6 +88,9 @@
     overflow-wrap: anywhere;
     word-break: break-word;
   }
+  /* Evita cortes raros en cabecera y hazla sticky */
+  .table thead th { white-space: nowrap; hyphens: none; position: sticky; top: 0; z-index: 2; }
+  .table thead { background-color: var(--bs-tertiary-bg, #f8f9fa); }
 
   /* --------- Dark mode (Bootstrap 5.3 via data-bs-theme) --------- */
   :root[data-bs-theme="dark"] body.bg-light { background-color:#0b0f14 !important; }
@@ -120,9 +123,9 @@
 
   /* En móvil: compáctalo todo */
   @media (max-width: 576px) {
-    .table { font-size: .92rem; }
+    .table { font-size: .95rem; }
     td, th { padding: .5rem .5rem; }
-    td.td-desc, th.th-desc { max-width: 24ch; }  /* descripción más contenida */
+    td.td-desc, th.th-desc { max-width: 26ch; }  /* descripción más contenida */
     .chip.btn { padding: .15rem .45rem; font-size: .78rem; }
   }
 </style>
@@ -138,9 +141,6 @@
     <div class="row g-2 align-items-center mb-2">
       <div class="col-12 col-sm-auto">
         <input id="file" type="file" accept="application/pdf,.pdf" class="form-control">
-      </div>
-      <div class="col-12 col-sm-auto">
-        <button id="btnParse" class="btn btn-primary">Procesar</button>
       </div>
     </div>
 
@@ -183,7 +183,6 @@
 
 <script>
 const $file = document.getElementById('file');
-const $btn = document.getElementById('btnParse');
 const $tbl = document.getElementById('tbl').querySelector('tbody');
 const $progress = document.getElementById('progress');
 const $meta = document.getElementById('meta');
@@ -191,6 +190,11 @@ const $check = document.getElementById('check');
 const $catsum = document.getElementById('catsum');
 const $btnExport = document.getElementById('btnExport');
 const $exportRoot = document.getElementById('export-root');
+
+let lastCheckOk = null;
+let lastExpected = NaN;
+let lastCalc = NaN;
+let lastFilename = '';
 
 // Estado de categorías
 const categoryMap = new Map(); // key -> 'alberto' | 'kike' | 'comun'
@@ -218,15 +222,22 @@ function setProgress(msg){ $progress.textContent = msg || ""; }
 function setCheckNone(){ $check.innerHTML = '<span class="text-muted">— Validación pendiente —</span>'; }
 function setCheck(filename, totalCalc){
   const expected = parseFilenameTotal(filename);
+  let html = '';
   if (!isFinite(expected)) {
-    $check.innerHTML = '<span class="text-muted">No se encontró importe en el nombre del archivo.</span>';
-    return;
-  }
-  if (nearlyEqual(expected, totalCalc)) {
-    $check.innerHTML = `<span class="text-success fw-bold">✅ Coincide</span> <span class="text-secondary">(archivo: ${toEUR(expected)} • calculado: ${toEUR(totalCalc)})</span>`;
+    html = '<div class="alert alert-secondary py-2 my-2" role="alert">No se encontró importe en el nombre del archivo.</div>';
+    lastCheckOk = null; lastExpected = NaN; lastCalc = Number(totalCalc)||NaN; lastFilename = filename || '';
+  } else if (nearlyEqual(expected, totalCalc)) {
+    html = `<div class="alert alert-success fw-bold my-2" role="alert" style="font-size:1.05rem">
+      ✅ Coincide — <span class="fw-normal">archivo: ${toEUR(expected)} • calculado: ${toEUR(totalCalc)}</span>
+    </div>`;
+    lastCheckOk = true; lastExpected = Number(expected); lastCalc = Number(totalCalc); lastFilename = filename || '';
   } else {
-    $check.innerHTML = `<span class="text-danger fw-bold">❌ No coincide</span> <span class="text-secondary">(archivo: ${toEUR(expected)} • calculado: ${toEUR(totalCalc)})</span>`;
+    html = `<div class="alert alert-danger fw-bold my-2" role="alert" style="font-size:1.05rem">
+      ❌ No coincide — <span class="fw-normal">archivo: ${toEUR(expected)} • calculado: ${toEUR(totalCalc)}</span>
+    </div>`;
+    lastCheckOk = false; lastExpected = Number(expected); lastCalc = Number(totalCalc); lastFilename = filename || '';
   }
+  $check.innerHTML = html;
 }
 
 function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -362,6 +373,10 @@ async function exportCategoryImages() {
   if (!window.html2canvas) {
     alert('No se pudo cargar html2canvas.');
     return;
+  }
+  if (lastCheckOk === false) {
+    const msg = `⚠️ El total calculado (${toEUR(lastCalc)}) NO coincide con el del archivo (${toEUR(lastExpected)}).\n\n¿Quieres exportar igualmente?`;
+    if (!confirm(msg)) return;
   }
   // Recopilar items por categoría respetando el orden actual de la tabla
   const cats = ['alberto','kike','comun'];
@@ -658,24 +673,20 @@ function extractMeta(lines){
   $meta.textContent = [tienda && `Comercio: ${tienda}`, (date||time) && `Fecha/Hora: ${date} ${time}`].filter(Boolean).join("\n");
 }
 
-// Principal
-$btn.addEventListener('click', async () => {
+async function processSelectedFile(){
   const f = $file.files && $file.files[0];
-  if(!f){ alert("Selecciona un PDF."); return; }
+  if(!f){ return; }
   if(!/\.pdf$/i.test(f.name)){ alert("Debe ser un PDF."); return; }
-
   try{
     setProgress("Cargando PDF...");
     const buf = new Uint8Array(await f.arrayBuffer());
     let lines = [];
-
     const {lines: lns, textItems} = await pdfToTextLines(buf);
     lines = lns;
     if(!lines.length || textItems===0){
       setProgress("Sin texto embebido. Haciendo OCR…");
       lines = await pdfToTextLinesOCR(buf);
     }
-
     setProgress("Extrayendo productos…");
     extractMeta(lines);
     const section = filterProductsSection(lines);
@@ -689,8 +700,8 @@ $btn.addEventListener('click', async () => {
     alert("No se pudo procesar el PDF.");
     setProgress("");
   }
-});
-
+}
+$file.addEventListener('change', processSelectedFile);
 $btnExport.addEventListener('click', exportCategoryImages);
 </script>
 </body>
