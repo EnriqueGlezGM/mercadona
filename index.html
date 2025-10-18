@@ -3,186 +3,174 @@
 <head>
 <meta charset="utf-8">
 <title>Lector ticket Mercadona</title>
-
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Modo oscuro automático -->
 <script>
-  // Activa el tema oscuro de Bootstrap si el sistema está en dark
-  (function(){
-    const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-    function applyTheme(e){ 
-      if (e.matches) { document.documentElement.setAttribute('data-bs-theme','dark'); }
-      else { document.documentElement.removeAttribute('data-bs-theme'); }
-    }
-    if (mq) {
-      applyTheme(mq);
-      mq.addEventListener ? mq.addEventListener('change', applyTheme) : mq.addListener(applyTheme);
-    }
-  })();
+(function(){
+  const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+  function applyTheme(e){ 
+    if (e.matches) document.documentElement.setAttribute('data-bs-theme','dark');
+    else document.documentElement.removeAttribute('data-bs-theme');
+  }
+  if (mq){ applyTheme(mq); mq.addEventListener('change', applyTheme); }
+})();
 </script>
 
-<!-- Bootstrap 5 (sin SRI para evitar bloqueos) -->
+<!-- Bootstrap -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 
 <!-- Librerías -->
 <script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-<script>
-  if (window.pdfjsLib) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
-  }
-</script>
+<script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js";</script>
 <script src="https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
-  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-  .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+.mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-  /* Chips de categoría */
-  .chip { border: 1px solid rgba(0,0,0,.125); }
-  .chip.active { color:#fff; border-color: transparent; }
-  .chip[data-cat="alberto"].active { background:#dc3545; } /* rojo */
-  .chip[data-cat="kike"].active    { background:#0d6efd; } /* azul */
-  .chip[data-cat="comun"].active   { background:#ffc107; color:#111; } /* amarillo */
+/* Chips de categoría */
+.chip { border: 1px solid rgba(0,0,0,.125); }
+.chip.active { color:#fff; border-color: transparent; }
+.chip[data-cat="alberto"].active { background:#dc3545; }
+.chip[data-cat="kike"].active    { background:#0d6efd; }
+.chip[data-cat="comun"].active   { background:#ffc107; color:#111; }
 
-  /* Resaltado de fila por categoría: fondo suave + barra izquierda */
-  tr.cat-alberto { background: #fde2e4; box-shadow: inset 4px 0 0 0 #dc3545; }
-  tr.cat-kike    { background: #e7f0ff; box-shadow: inset 4px 0 0 0 #064fbc; }
-  tr.cat-comun   { background: #fff6d6; box-shadow: inset 4px 0 0 0 #ffc107; }
+/* Fila coloreada */
+tr.cat-alberto { background: #fde2e4; box-shadow: inset 4px 0 0 0 #dc3545; }
+tr.cat-kike    { background: #e7f0ff; box-shadow: inset 4px 0 0 0 #0d6efd; }
+tr.cat-comun   { background: #fff6d6; box-shadow: inset 4px 0 0 0 #ffc107; }
+tbody tr.cat-alberto>* { background-color: #fde2e4 !important; }
+tbody tr.cat-kike>*    { background-color: #e7f0ff !important; }
+tbody tr.cat-comun>*   { background-color: #fff6d6 !important; }
 
-  /* Asegura que el color llega a las celdas (Bootstrap pinta bg en <td>) */
-  tbody tr.cat-alberto > * { background-color: #fde2e4 !important; }
-  tbody tr.cat-kike    > * { background-color: #8eb6fa !important; }
-  tbody tr.cat-comun   > * { background-color: #fff6d6 !important; }
+/* Resumen */
+.catsum-grid { display:flex; flex-wrap:wrap; gap:.5rem; }
+.catsum-grid .tag { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .6rem; border-radius:.5rem; background:#f8f9fa; border:1px solid #e9ecef; font-size:.9rem; cursor:pointer; }
+.catsum-grid .n { font-variant-numeric: tabular-nums; }
 
-  /* Resumen de categorías */
-  .catsum-grid { display:flex; flex-wrap:wrap; gap:.5rem; }
-  .catsum-grid .tag { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .6rem; border-radius:.5rem; background:#f8f9fa; border:1px solid #e9ecef; font-size:.9rem; }
-  .catsum-grid .tag { cursor: pointer; }
-  .catsum-grid .n { font-variant-numeric: tabular-nums; }
+/* Marcas de precio */
+.price-flag { font-size:.95em; margin-right:.35rem; vertical-align:text-top; }
+.pf-low{color:#198754;} .pf-high{color:#dc3545;} .pf-mid{color:#f59e0b;} .pf-eq{color:#6b7280;}
 
-  /* Tarjeta para exportar como imagen */
-  .export-card {
-    width: 900px; background: #ffffff; color: #111827;
-    border: 1px solid #e5e7eb; border-radius: 12px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-    padding: 16px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-  }
-  .export-card h2 { margin: 0 0 8px; font-size: 20px; }
-  .export-card .meta { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
-  .export-card table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
-  .export-card th, .export-card td { border: 1px solid #e5e7eb; padding: 8px; }
-  .export-card th { text-align: left; background: #f9fafb; }
-  .export-card .right { text-align: right; font-variant-numeric: tabular-nums; }
-  .export-card .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  .export-card .total { font-weight: 700; }
-  .hdr-alberto { color:#dc3545; }
-  .hdr-kike   { color:#0d6efd; }
-  .hdr-comun  { color:#ffc107; }
+/* Subrayado sólo en texto, no icono */
+a.desc-link { text-decoration:none; }
+a.desc-link .desc-text { text-decoration:underline; text-underline-offset:2px; }
 
-  /* Contenedor offscreen para render */
-  #export-root { position: fixed; left: -200vw; top: 0; }
+/* Tabla responsive */
+.table-wrap { width:100%; overflow-x:auto; }
+th.th-desc,td.td-desc{max-width:40ch;overflow-wrap:anywhere;word-break:break-word;}
+.table thead th{white-space:nowrap;position:sticky;top:0;z-index:2;background:var(--bs-tertiary-bg,#f8f9fa);}
 
-  /* Tabla responsive y columna Descripción controlada */
-  .table-wrap { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  td.td-desc, th.th-desc {
-    max-width: 40ch;   /* controla anchura en desktop */
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-  /* Evita cortes raros en cabecera y hazla sticky */
-  .table thead th { white-space: nowrap; hyphens: none; position: sticky; top: 0; z-index: 2; }
-  .table thead { background-color: var(--bs-tertiary-bg, #f8f9fa); }
+/* Dark Mode */
+:root[data-bs-theme="dark"] body.bg-light { background:#0b0f14!important; color:#ddd; }
+:root[data-bs-theme="dark"] .table thead{background:#111827;color:#eee;}
+:root[data-bs-theme="dark"] .chip{border-color:#444;color:#eee;}
+:root[data-bs-theme="dark"] tr.cat-alberto>*{background-color:#3b1116!important;}
+:root[data-bs-theme="dark"] tr.cat-kike>*{background-color:#0f1c35!important;}
+:root[data-bs-theme="dark"] tr.cat-comun>*{background-color:#352b0f!important;}
 
-  /* --------- Dark mode (Bootstrap 5.3 via data-bs-theme) --------- */
-  :root[data-bs-theme="dark"] body.bg-light { background-color:#0b0f14 !important; }
-  :root[data-bs-theme="dark"] body { color: var(--bs-body-color); }
-  :root[data-bs-theme="dark"] .card { background-color:#0f1720; color: var(--bs-body-color); }
-  :root[data-bs-theme="dark"] .card.shadow-sm { box-shadow: 0 6px 18px rgba(0,0,0,0.5) !important; }
-  :root[data-bs-theme="dark"] .table { --bs-table-bg: transparent; color: var(--bs-body-color); }
-  :root[data-bs-theme="dark"] .table thead { background-color: var(--bs-tertiary-bg); color: var(--bs-body-color); }
-  :root[data-bs-theme="dark"] .table tbody tr { border-color: var(--bs-border-color); }
-  :root[data-bs-theme="dark"] .catsum-grid .tag { background: var(--bs-tertiary-bg); border-color: var(--bs-border-color); color: var(--bs-body-color); }
-  :root[data-bs-theme="dark"] .text-muted, 
-  :root[data-bs-theme="dark"] .text-secondary { color: #9ca3af !important; }
-  :root[data-bs-theme="dark"] .chip { border-color: var(--bs-border-color); color: var(--bs-body-color); }
-  :root[data-bs-theme="dark"] .chip[data-cat="comun"].active { color:#111; }
-  /* Inputs en oscuro */
-  :root[data-bs-theme="dark"] .form-control {
-    background-color: var(--bs-body-bg);
-    color: var(--bs-body-color);
-    border-color: var(--bs-border-color);
-  }
-  :root[data-bs-theme="dark"] .form-control::file-selector-button {
-    background-color: var(--bs-secondary-bg);
-    color: var(--bs-body-color);
-    border: 1px solid var(--bs-border-color);
-  }
-  /* Tintes por categoría en oscuro */
-  :root[data-bs-theme="dark"] tbody tr.cat-alberto > * { background-color:#3b1116 !important; }
-  :root[data-bs-theme="dark"] tbody tr.cat-kike    > * { background-color:#0f1c35 !important; }
-  :root[data-bs-theme="dark"] tbody tr.cat-comun   > * { background-color:#352b0f !important; }
+/* Formulario corrección manual */
+#manualFix .form-text{margin-top:.25rem;}
+#manualFix .input-group-text{min-width:2.25rem;justify-content:center;}
+@media(max-width:576px){
+  .table{font-size:.95rem;}
+  td,th{padding:.5rem;}
+  td.td-desc,th.th-desc{max-width:26ch;}
+  .chip.btn{padding:.15rem .45rem;font-size:.8rem;}
+}
+.btn-del { line-height: 1; padding: .1rem .35rem; }
 
-  /* En móvil: compáctalo todo */
-  @media (max-width: 576px) {
-    .table { font-size: .95rem; }
-    td, th { padding: .5rem .5rem; }
-    td.td-desc, th.th-desc { max-width: 26ch; }  /* descripción más contenida */
-    .chip.btn { padding: .15rem .45rem; font-size: .78rem; }
-  }
+/* --- Export card styles (restored) --- */
+.export-card {
+  width: 900px; background: #ffffff; color: #111827;
+  border: 1px solid #e5e7eb; border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  padding: 16px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+}
+.export-card h2 { margin: 0 0 8px; font-size: 20px; }
+.export-card .meta { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+.export-card table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
+.export-card th, .export-card td { border: 1px solid #e5e7eb; padding: 8px; }
+.export-card th { text-align: left; background: #f9fafb; }
+.export-card .right { text-align: right; font-variant-numeric: tabular-nums; }
+.export-card .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.export-card .total { font-weight: 700; }
+.hdr-alberto { color:#dc3545; }
+.hdr-kike   { color:#0d6efd; }
+.hdr-comun  { color:#ffc107; }
+/* keep export root offscreen */
+#export-root { position: fixed; left: -200vw; top: 0; }
 </style>
 </head>
 <body class="bg-light">
-  <div class="container py-3">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h1 class="h5 m-0">Lector de ticket (Mercadona)</h1>
-      <span id="progress" class="text-secondary small"></span>
-    </div>
-
-    <!-- Controles -->
-    <div class="row g-2 align-items-center mb-2">
-      <div class="col-12 col-sm-auto">
-        <input id="file" type="file" accept="application/pdf,.pdf" class="form-control">
-      </div>
-    </div>
-
-    <!-- Meta + validación -->
-    <div id="meta" class="text-muted small mb-2"></div>
-    <div id="check" class="small mb-2 text-muted"></div>
-
-    <!-- Tabla -->
-    <div class="table-wrap card shadow-sm">
-      <div class="table-responsive">
-        <table id="tbl" class="table table-sm align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th style="width:90px;">Nº</th>
-              <th class="th-desc">Descripción</th>
-              <th style="width:210px; min-width:190px;">Categoría</th>
-              <th class="text-end" style="width:140px;">Importe (€)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td colspan="4" class="text-muted">Carga un PDF y pulsa “Procesar”.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Resumen categorías -->
-    <div id="catsum" class="mt-2"></div>
-
-    <!-- Botón Exportar al final -->
-    <div class="d-grid gap-2 mt-2">
-      <button id="btnExport" class="btn btn-outline-secondary" title="Asigna categoría a todas las filas para exportar" disabled>
-        Exportar resumen por categorías
-      </button>
-    </div>
-
-    <!-- Offscreen export root -->
-    <div id="export-root" aria-hidden="true"></div>
+<div class="container py-3">
+  <div class="d-flex align-items-center justify-content-between">
+    <h1 class="h5 m-0">Lector de ticket (Mercadona)</h1>
+    <span id="progress" class="small text-muted"></span>
   </div>
 
+  <input id="file" type="file" accept="application/pdf" class="form-control my-2">
+
+  <div id="meta" class="small text-muted"></div>
+  <div id="check" class="mb-2"></div>
+
+  <div class="table-wrap card shadow-sm">
+    <table class="table table-sm align-middle mb-0" id="tbl">
+      <thead>
+        <tr>
+          <th style="width:90px;">Nº</th>
+          <th class="th-desc">Descripción</th>
+          <th style="width:210px;">Categoría</th>
+          <th class="text-end" style="width:140px;">Importe (€)</th>
+        </tr>
+      </thead>
+      <tbody><tr><td colspan="4" class="text-muted">Selecciona un PDF…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div id="catsum" class="mt-2"></div>
+
+  <div class="d-grid mt-2">
+    <button id="btnExport" class="btn btn-outline-secondary" disabled>Exportar resumen</button>
+  </div>
+
+  <div id="manualFix" class="card mt-3 d-none">
+    <div class="card-body">
+      <div id="diffMsg" class="mb-2 small"></div>
+      <form id="manualForm" class="row g-2 align-items-end">
+        <div class="col-12 col-sm-6">
+          <label class="form-label small mb-1">Descripción</label>
+          <input id="mfDesc" type="text" class="form-control" placeholder="Ej. línea faltante">
+        </div>
+        <div class="col-6 col-sm-3">
+          <label class="form-label small mb-1">Importe</label>
+          <div class="input-group">
+            <span class="input-group-text">€</span>
+            <input id="mfAmount" type="text" class="form-control mono" value="0,00" inputmode="decimal" autocomplete="off">
+          </div>
+        </div>
+        <div class="col-6 col-sm-3">
+          <label class="form-label small mb-1">Categoría</label>
+          <select id="mfCat" class="form-select">
+            <option value="alberto">Alberto</option>
+            <option value="kike">Kike</option>
+            <option value="comun" selected>Común</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <button id="btnAddManual" class="btn btn-sm btn-warning">Añadir línea</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="export-root" style="position:fixed;left:-200vw;top:0;"></div>
+</div>
+
 <script>
+/* ------------ ELEMENTOS Y ESTADO ------------ */
 const $file = document.getElementById('file');
 const $tbl = document.getElementById('tbl').querySelector('tbody');
 const $progress = document.getElementById('progress');
@@ -197,14 +185,20 @@ let lastExpected = NaN;
 let lastCalc = NaN;
 let lastFilename = '';
 
-// Estado de categorías
-const categoryMap = new Map(); // key -> 'alberto' | 'kike' | 'comun'
+/* Categorías por fila */
+const categoryMap = new Map(); // key -> 'alberto'|'kike'|'comun'
 let currentItems = [];
 let itemsByKey = new Map();
 function itemKey(it) {
   return [String(it.quantity), String(it.description), String(it.unit), String(it.amount)].join('|');
 }
 
+/* Líneas manuales (para ajustar cuando falte importe) */
+let manualItems = [];
+// Productos base (solo los detectados en el PDF, sin manuales)
+let baseItems = [];
+
+/* ------------ NUMÉRICO / FORMATO ------------ */
 const toNumberEUR = (s) => {
   if (typeof s !== "string") s = String(s ?? "");
   s = s.replace(/\s+/g,"").replace(/[€\u0080]/g,"").replace(/\./g,"").replace(",",".");
@@ -213,13 +207,20 @@ const toNumberEUR = (s) => {
 };
 const toEUR = (n) => isFinite(n) ? n.toLocaleString("es-ES",{minimumFractionDigits:2, maximumFractionDigits:2}) : "0,00";
 function nearlyEqual(a,b,eps=0.01){ return isFinite(a)&&isFinite(b)&&Math.abs(a-b) <= eps; }
+function formatEUR(n){ return (isFinite(n)? n:0).toLocaleString('es-ES',{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function sanitizeAmountInput(str){
+  if (typeof str !== 'string') str = String(str ?? '');
+  str = str.trim().replace(/[€\s]/g,'').replace(/\./g,'').replace(',', '.');
+  const n = Number(str);
+  return isFinite(n) ? n : NaN;
+}
 
+/* ------------ PROGRESO / VALIDACIÓN ------------ */
+function setProgress(msg){ $progress.textContent = msg || ""; }
 function parseFilenameTotal(name){
   const m = String(name||"").match(/(\d{1,3}(?:\.\d{3})*,\d{2})/);
   return m ? toNumberEUR(m[1]) : NaN;
 }
-
-function setProgress(msg){ $progress.textContent = msg || ""; }
 function setCheckNone(){ $check.innerHTML = '<span class="text-muted">— Validación pendiente —</span>'; }
 function setCheck(filename, totalCalc){
   const expected = parseFilenameTotal(filename);
@@ -239,17 +240,40 @@ function setCheck(filename, totalCalc){
     lastCheckOk = false; lastExpected = Number(expected); lastCalc = Number(totalCalc); lastFilename = filename || '';
   }
   $check.innerHTML = html;
+  updateManualFixUI();
 }
 
+/* ------------ HELPERS TEXTO / BUSQUEDA ------------ */
 function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
+function normalizeDescKey(s){
+  s = String(s||'').toLowerCase();
+  s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); // quita tildes
+  s = s.replace(/\s{2,}/g,' ').trim();
+  return s;
+}
 function buildSearchURL(desc){
   const q = encodeURIComponent(`${String(desc||'').trim()} Mercadona`);
-  // Google Images results
-  return `https://www.google.com/search?tbm=isch&q=${q}`;
+  return `https://www.google.com/search?tbm=isch&q=${q}`; // Google Imágenes
 }
 
+/* ------------ ICONOS PRECIO POR DESCRIPCIÓN ------------ */
+function priceFlagForRole(role){
+  switch(role){
+    case 'low': return '<span class="price-flag pf-low" title="Más barato">▼</span>';
+    case 'high': return '<span class="price-flag pf-high" title="Más caro">▲</span>';
+    case 'mid': return '<span class="price-flag pf-mid" title="Precio intermedio">●</span>';
+    case 'eq': return '<span class="price-flag pf-eq" title="Mismo precio">⚖️</span>';
+    default: return '';
+  }
+}
+
+/* ------------ RENDER TABLA ------------ */
 function setTable(items){
+  // Agrega líneas manuales si existen
+  items = (items || []).slice();
+  if (Array.isArray(manualItems) && manualItems.length){
+    items = items.concat(manualItems);
+  }
   if(!items || items.length===0){
     $tbl.innerHTML = `<tr><td colspan="4" class="text-muted">No se detectaron líneas de producto.</td></tr>`;
     setCheckNone();
@@ -260,18 +284,60 @@ function setTable(items){
     updateExportButtonState();
     return 0;
   }
+
   currentItems = items.slice();
+
+  // Agrupar por descripción y asignar roles de precio
+  const groups = new Map(); // descKey -> [{ key, amount }]
+  const roleByKey = new Map(); // key -> 'low'|'high'|'mid'|'eq'
+  for (const r of currentItems){
+    const key = itemKey(r);
+    const dkey = normalizeDescKey(r.description);
+    if (!groups.has(dkey)) groups.set(dkey, []);
+    groups.get(dkey).push({ key, amount: Number(r.amount)||0 });
+  }
+  for (const [, arr] of groups.entries()){
+    if (arr.length <= 1){ roleByKey.set(arr[0].key, ''); continue; }
+    let min = Infinity, max = -Infinity;
+    for (const it of arr){ if (it.amount < min) min = it.amount; if (it.amount > max) max = it.amount; }
+    const allEq = isFinite(min) && isFinite(max) && Math.abs(max - min) < 0.001;
+    if (allEq){ for (const it of arr) roleByKey.set(it.key, 'eq'); }
+    else {
+      for (const it of arr){
+        if (Math.abs(it.amount - min) < 0.001) roleByKey.set(it.key, 'low');
+        else if (Math.abs(it.amount - max) < 0.001) roleByKey.set(it.key, 'high');
+        else roleByKey.set(it.key, 'mid');
+      }
+    }
+  }
+
+  // Orden alfabético por descripción (y por importe ascendente dentro del grupo)
+  const sorted = currentItems.slice().sort((a,b) => {
+    const da = normalizeDescKey(a.description);
+    const db = normalizeDescKey(b.description);
+    const cmp = da.localeCompare(db, 'es', { sensitivity:'base' });
+    if (cmp !== 0) return cmp;
+    return (Number(a.amount)||0) - (Number(b.amount)||0);
+  });
+
   itemsByKey = new Map();
   let html = "";
   let total = 0;
-  for(const r of items){
+  for(const r of sorted){
     const key = itemKey(r);
     itemsByKey.set(key, r);
     total += r.amount;
     const cat = categoryMap.get(key) || '';
-    html += `<tr data-key="${escapeHtml(key)}" class="${cat ? 'cat-'+cat : ''}">
-      <td class="mono">${r.quantity}</td>
-      <td class="td-desc"><a class="desc-link" href="${buildSearchURL(r.description)}" target="_blank" rel="noopener">${escapeHtml(r.description)}</a></td>
+    const role = roleByKey.get(key) || '';
+    const flag = priceFlagForRole(role);
+    html += `<tr data-key="${escapeHtml(key)}" data-manual-id="${r.manualId ? escapeHtml(String(r.manualId)) : ''}" class="${cat ? 'cat-'+cat : ''}">
+      <td class="mono">
+        ${r.manualId
+          ? `<button type="button" class="btn btn-sm btn-outline-danger btn-del" title="Eliminar línea manual">✖</button>`
+          : `${escapeHtml(String(r.quantity))}`
+        }
+      </td>
+      <td class="td-desc"><a class="desc-link" href="${buildSearchURL(r.description)}" target="_blank" rel="noopener">${flag}<span class="desc-text">${escapeHtml(r.description)}</span></a></td>
       <td class="text-nowrap">
         <button type="button" class="chip btn btn-sm ${cat==='alberto'?'active':''}" data-cat="alberto">Alberto</button>
         <button type="button" class="chip btn btn-sm ${cat==='kike'?'active':''}" data-cat="kike">Kike</button>
@@ -287,17 +353,18 @@ function setTable(items){
     <td class="text-end mono fw-bold">${toEUR(total)}</td>
   </tr>`;
   $tbl.innerHTML = html;
+
   updateCategorySummary();
   updateExportButtonState();
   return total;
 }
 
+/* ------------ RESUMEN Y COPIAR TOTALES ------------ */
 function updateCategorySummary() {
   const sums = { alberto: {n:0, total:0}, kike: {n:0, total:0}, comun: {n:0, total:0} };
   for (const [key, cat] of categoryMap.entries()) {
     const it = itemsByKey.get(key);
-    if (!it) continue;
-    if (!sums[cat]) continue;
+    if (!it || !sums[cat]) continue;
     sums[cat].n += 1;
     sums[cat].total += Number(it.amount) || 0;
   }
@@ -308,7 +375,6 @@ function updateCategorySummary() {
     `<span class="tag" data-total="${toEUR(sums.comun.total)}" title="Click para copiar total de Común"><strong class="text-warning">Común</strong> <span class="n">(${sums.comun.n}) ${toEUR(sums.comun.total)}</span></span>` +
     '</div>';
 }
-
 $catsum.addEventListener('click', async (ev) => {
   const tag = ev.target.closest('.tag');
   if (!tag) return;
@@ -323,36 +389,7 @@ $catsum.addEventListener('click', async (ev) => {
   }
 });
 
-/* Habilita/Deshabilita export según estén todas las filas categorizadas */
-function updateExportButtonState() {
-  const rows = Array.from(document.querySelectorAll('#tbl tbody tr[data-key]'));
-  if (rows.length === 0) {
-    $btnExport.disabled = true;
-    $btnExport.title = 'No hay productos para exportar';
-    return;
-  }
-  let assigned = 0;
-  for (const tr of rows) {
-    const key = tr.getAttribute('data-key');
-    if (key && categoryMap.has(key)) assigned++;
-  }
-  const allAssigned = assigned === rows.length;
-  $btnExport.disabled = !allAssigned;
-  $btnExport.title = allAssigned
-    ? 'Exportar una única imagen con todas las categorías'
-    : 'Asigna categoría a todas las filas para exportar';
-}
-
-function ensureRowCategoryUI(tr, key) {
-  const cat = categoryMap.get(key) || '';
-  tr.classList.remove('cat-alberto','cat-kike','cat-comun');
-  if (cat) tr.classList.add('cat-' + cat);
-  tr.querySelectorAll('.chip').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-cat') === cat);
-  });
-}
-
-// ----- Export: una sola imagen con todas las categorías no vacías -----
+/* ------------ EXPORTAR COMO IMAGEN ------------ */
 function friendlyCat(cat) {
   return cat === 'alberto' ? 'Alberto' : (cat === 'kike' ? 'Kike' : 'Común');
 }
@@ -360,8 +397,6 @@ function buildExportCard(cat, items) {
   const wrap = document.createElement('div');
   wrap.className = 'export-card';
   const total = items.reduce((a,b)=> a + (Number(b.amount)||0), 0);
-  const now = new Date();
-  const meta = `${now.toLocaleDateString('es-ES')} · ${now.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;
   wrap.innerHTML = `
     <h2 class="hdr-${cat}">Lista de ${friendlyCat(cat)}</h2>
     <table>
@@ -399,7 +434,6 @@ async function exportCategoryImages() {
     const msg = `⚠️ El total calculado (${toEUR(lastCalc)}) NO coincide con el del archivo (${toEUR(lastExpected)}).\n\n¿Quieres exportar igualmente?`;
     if (!confirm(msg)) return;
   }
-  // Recopilar items por categoría respetando el orden actual de la tabla
   const cats = ['alberto','kike','comun'];
   const byCat = { alberto: [], kike: [], comun: [] };
   for (const tr of document.querySelectorAll('#tbl tbody tr[data-key]')) {
@@ -409,8 +443,6 @@ async function exportCategoryImages() {
     const it = itemsByKey.get(key);
     if (cat && it) byCat[cat].push(it);
   }
-
-  // Construir un wrapper con título y una tarjeta por cada categoría no vacía
   const wrapper = document.createElement('div');
   wrapper.style.width = '980px';
   wrapper.style.background = '#fff';
@@ -441,13 +473,8 @@ async function exportCategoryImages() {
     wrapper.appendChild(card);
     added++;
   }
+  if (!added) { alert('No hay categorías con elementos para exportar.'); return; }
 
-  if (!added) {
-    alert('No hay categorías con elementos para exportar.');
-    return;
-  }
-
-  // Render y descarga como una sola imagen
   $exportRoot.appendChild(wrapper);
   const canvas = await html2canvas(wrapper, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
   const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
@@ -461,26 +488,27 @@ async function exportCategoryImages() {
   wrapper.remove();
 }
 
-// ----- Normalización OCR y utilidades de precio -----
-function normalizeLine(s){
-  s = String(s||"");
-  s = s.replace(/(\d)[oO](\d)/g, '$10$2');       // 1O2 -> 102
-  s = s.replace(/,(\d)[sS]\b/g, ',$15');         // 18,4S -> 18,45
-  s = s.replace(/,(\d)[oO]\b/g, ',$10');         // 18,4O -> 18,40
-  s = s.replace(/\s*[€\u0080]\s*/g, ' €');       // espacios € 
-  s = s.replace(/\s{2,}/g,' ').trim();
-  return s;
-}
-function findLastPrice(str){
-  const s = normalizeLine(str);
-  const m = s.match(/(\d{1,3}(?:\.\d{3})*,\d{1,2})(?:\s*[€\u0080])?(?!.*\d)/);
-  if (!m) return null;
-  let val = m[1];
-  if (/,\d$/.test(val)) val = val + '0';
-  return val;
+/* ------------ PICKER AUTO / ESTADO EXPORT ------------ */
+function updateExportButtonState() {
+  const rows = Array.from(document.querySelectorAll('#tbl tbody tr[data-key]'));
+  if (rows.length === 0) {
+    $btnExport.disabled = true;
+    $btnExport.title = 'No hay productos para exportar';
+    return;
+  }
+  let assigned = 0;
+  for (const tr of rows) {
+    const key = tr.getAttribute('data-key');
+    if (key && categoryMap.has(key)) assigned++;
+  }
+  const allAssigned = assigned === rows.length;
+  $btnExport.disabled = !allAssigned;
+  $btnExport.title = allAssigned
+    ? 'Exportar una única imagen con todas las categorías'
+    : 'Asigna categoría a todas las filas para exportar';
 }
 
-// Delegación chips
+/* ------------ CLIC EN CHIPS ------------ */
 document.getElementById('tbl').addEventListener('click', (ev) => {
   const btn = ev.target.closest('.chip');
   if (!btn) return;
@@ -488,16 +516,46 @@ document.getElementById('tbl').addEventListener('click', (ev) => {
   if (!tr) return;
   const key = tr.getAttribute('data-key');
   if (!key) return;
-  const cat = btn.getAttribute('data-cat'); // 'alberto' | 'kike' | 'comun'
+  const cat = btn.getAttribute('data-cat');
   const was = categoryMap.get(key) || '';
   const next = (was === cat) ? '' : cat;
   if (next) categoryMap.set(key, next); else categoryMap.delete(key);
-  ensureRowCategoryUI(tr, key);
+  // UI
+  tr.classList.remove('cat-alberto','cat-kike','cat-comun');
+  if (next) tr.classList.add('cat-'+next);
+  tr.querySelectorAll('.chip').forEach(b => b.classList.toggle('active', b.getAttribute('data-cat')===next));
+  // Estado
   updateCategorySummary();
   updateExportButtonState();
 });
 
-// --- Lectura PDF a líneas (texto embebido) ---
+// Eliminar línea manual con botón ✖ en la columna "Nº"
+document.getElementById('tbl').addEventListener('click', (ev) => {
+  const del = ev.target.closest('.btn-del');
+  if (!del) return;
+  const tr = del.closest('tr');
+  if (!tr) return;
+  const mid = tr.getAttribute('data-manual-id');
+  if (!mid) return;
+
+  // Buscar el item manual correspondiente
+  const idx = manualItems.findIndex(it => String(it.manualId) === String(mid));
+  if (idx === -1) return;
+
+  const it = manualItems[idx];
+
+  // Borrar categoría asociada si la hubiera
+  const k = itemKey(it);
+  if (categoryMap.has(k)) categoryMap.delete(k);
+
+  // Eliminar del array y re-render
+  manualItems.splice(idx, 1);
+  const total = setTable(baseItems); // setTable integra manualItems
+  lastCalc = total;
+  setCheck(lastFilename || '', total);
+}, true);
+
+/* ------------ PDF -> TEXTO ------------ */
 async function pdfToTextLines(buf){
   const pdf = await pdfjsLib.getDocument({data: buf}).promise;
   const lines = [];
@@ -524,7 +582,7 @@ async function pdfToTextLines(buf){
   return {lines, textItems};
 }
 
-// --- OCR PDF (render -> Tesseract) ---
+/* ------------ OCR (fallback) ------------ */
 async function pdfToTextLinesOCR(buf){
   if(!window.Tesseract) throw new Error("No se cargó Tesseract.js");
   const pdf = await pdfjsLib.getDocument({data: buf}).promise;
@@ -547,6 +605,24 @@ async function pdfToTextLinesOCR(buf){
   return lines;
 }
 
+/* ------------ HEURÍSTICAS ------------ */
+function normalizeLine(s){
+  s = String(s||"");
+  s = s.replace(/(\d)[oO](\d)/g, '$10$2');       // 1O2 -> 102
+  s = s.replace(/,(\d)[sS]\b/g, ',$15');         // 18,4S -> 18,45
+  s = s.replace(/,(\d)[oO]\b/g, ',$10');         // 18,4O -> 18,40
+  s = s.replace(/\s*[€\u0080]\s*/g, ' €');       
+  s = s.replace(/\s{2,}/g,' ').trim();
+  return s;
+}
+function findLastPrice(str){
+  const s = normalizeLine(str);
+  const m = s.match(/(\d{1,3}(?:\.\d{3})*,\d{1,2})(?:\s*[€\u0080])?(?!.*\d)/);
+  if (!m) return null;
+  let val = m[1];
+  if (/,\d$/.test(val)) val = val + '0';
+  return val;
+}
 function nextNonEmpty(arr, i){
   let j = i+1;
   while(j < arr.length){
@@ -556,8 +632,6 @@ function nextNonEmpty(arr, i){
   }
   return { index: -1, text: "" };
 }
-
-// Recorte de sección
 function filterProductsSection(lines){
   const L = lines.map(s => normalizeLine(String(s||"").trim()));
   const looksLikeProduct = (s, next) =>
@@ -582,8 +656,6 @@ function filterProductsSection(lines){
   if (start >= 0) return L.slice(start, end).filter(Boolean);
   return L.filter(Boolean);
 }
-
-// Parser
 function parseProducts(lines){
   const isNoise = (s) => /(IVA\b|BASE IMPONIBLE|CUOTA\b|TARJ|MASTERCARD|EFECTIVO|FACTURA|SE ADMITEN DEVOLUCIONES|CAMBIO)/i.test(s);
   const clean = (s) => String(s||"").replace(/\s{2,}/g," ").trim();
@@ -640,7 +712,7 @@ function parseProducts(lines){
       }
     }
 
-    // C3) "1 DESCRIPCIÓN" + siguiente con precio en cualquier parte
+    // "1 DESCRIPCIÓN" + siguiente con precio al final
     m = row.match(/^\s*(\d+)\s+(.+?)\s*$/);
     if (m) {
       const qty = m[1];
@@ -694,6 +766,7 @@ function extractMeta(lines){
   $meta.textContent = [tienda && `Comercio: ${tienda}`, (date||time) && `Fecha/Hora: ${date} ${time}`].filter(Boolean).join("\n");
 }
 
+/* ------------ PROCESO PRINCIPAL ------------ */
 async function processSelectedFile(){
   const f = $file.files && $file.files[0];
   if(!f){ return; }
@@ -713,7 +786,9 @@ async function processSelectedFile(){
     const section = filterProductsSection(lines);
     const items = parseProducts(section);
     categoryMap.clear();
-    const total = setTable(items);
+    manualItems = [];
+    baseItems = items.slice();           // guarda los productos detectados como base
+    const total = setTable(baseItems);   // render SIEMPRE partiendo de base
     setCheck(f.name, total);
     setProgress("");
   } catch (e){
@@ -722,19 +797,124 @@ async function processSelectedFile(){
     setProgress("");
   }
 }
-</script>
-<script>
+
+/* ------------ UI CORRECCIÓN MANUAL ------------ */
+function getRemaining(){
+  if (!isFinite(lastExpected) || !isFinite(lastCalc)) return 0;
+  return lastExpected - lastCalc; // + => falta ; - => sobra
+}
+function updateManualFixUI(){
+  const box = document.getElementById('manualFix');
+  const msg = document.getElementById('diffMsg');
+  const amtInput = document.getElementById('mfAmount');
+  const help = document.getElementById('remainHelp');
+  const canCompare = isFinite(lastExpected) && isFinite(lastCalc);
+  if (!box || !msg || !amtInput) return;
+  if (!canCompare){
+    box.classList.add('d-none');
+    return;
+  }
+  const diff = getRemaining();
+  const abs = Math.abs(diff);
+  const falta = diff > 0.005;
+  const sobra = diff < -0.005;
+
+  if (falta) {
+    msg.innerHTML = `<div class="alert alert-warning py-2 my-0" role="alert">
+      Falta <strong>${toEUR(abs)}</strong> para cuadrar con el total del archivo.
+    </div>`;
+    const valNow = toNumberEUR(amtInput.value);
+    if (!isFinite(valNow) || valNow <= 0) amtInput.value = toEUR(abs);
+    document.getElementById('btnAddManual').disabled = false;
+    box.classList.remove('d-none');
+  } else if (sobra) {
+    msg.innerHTML = `<div class="alert alert-danger py-2 my-0" role="alert">
+      Sobra <strong>${toEUR(abs)}</strong> respecto al total del archivo. Revisa las líneas detectadas.
+    </div>`;
+    amtInput.value = toEUR(0);
+    document.getElementById('btnAddManual').disabled = true;
+    box.classList.remove('d-none');
+  } else {
+    box.classList.add('d-none');
+    return;
+  }
+  
+}
+
+/* ------------ EVENTOS ------------ */
 $file.addEventListener('change', processSelectedFile);
+
+// Saneo en vivo del importe manual
+const $mfAmount = document.getElementById('mfAmount');
+$mfAmount.addEventListener('input', () => {
+  const n = sanitizeAmountInput($mfAmount.value);
+  const rem = getRemaining();
+  const over = isFinite(n) && n - rem > 0.005;
+  $mfAmount.classList.toggle('is-invalid', !!over);
+});
+$mfAmount.addEventListener('blur', () => {
+  const n = sanitizeAmountInput($mfAmount.value);
+  if (isFinite(n) && n > 0) $mfAmount.value = toEUR(n);
+});
+
+// Añadir línea manual
+document.getElementById('manualForm').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const desc = document.getElementById('mfDesc').value.trim();
+  const cat = document.getElementById('mfCat').value;
+  const amtStr = document.getElementById('mfAmount').value;
+  const amtNum = sanitizeAmountInput(amtStr);
+  const rem = getRemaining();
+
+  if (!desc) { alert('Introduce una descripción.'); return; }
+  if (!isFinite(amtNum) || amtNum <= 0){ alert('Importe inválido.'); return; }
+  if (!(rem > 0.005)) { alert('Ahora mismo no falta importe (o sobra).'); return; }
+  if ((amtNum - rem) > 0.005) {
+    alert(`El importe supera lo que falta por ajustar (${toEUR(rem)}).`);
+    return;
+  }
+
+  const it = {
+    quantity: 1,
+    description: desc,
+    unit: amtNum,
+    amount: amtNum,
+    manualId: Date.now() + '_' + Math.random().toString(36).slice(2,7)
+  };
+  manualItems.push(it);
+
+  const key = itemKey(it);
+  if (cat) categoryMap.set(key, cat);
+
+  const total = setTable(baseItems);
+  lastCalc = total;
+  setCheck(lastFilename || '', total);
+
+  document.getElementById('mfDesc').value = '';
+  const newRem = getRemaining();
+  document.getElementById('mfAmount').value = newRem > 0.005 ? toEUR(newRem) : toEUR(0);
+  document.getElementById('mfDesc').focus();
+});
+
+// Export
 $btnExport.addEventListener('click', exportCategoryImages);
+
+// Auto-abrir picker: intento inmediato + primer toque/tecla (iOS necesita user activation)
 document.addEventListener('DOMContentLoaded', () => {
-  try {
-    if (!$file.files || $file.files.length === 0) {
-      setTimeout(() => {
+  const openPicker = () => {
+    try {
+      if (!$file.files || $file.files.length === 0) {
         if (typeof $file.showPicker === 'function') $file.showPicker();
         else $file.click();
-      }, 400);
-    }
-  } catch (e) {}
+      }
+    } catch(e){}
+  };
+  setTimeout(openPicker, 300);
+  const onceOpen = () => { openPicker(); window.removeEventListener('pointerdown', onceOpen); window.removeEventListener('keydown', onceOpen); };
+  window.addEventListener('pointerdown', onceOpen, { once:true });
+  window.addEventListener('keydown', onceOpen, { once:true });
+
+  updateManualFixUI();
 });
 </script>
 </body>
