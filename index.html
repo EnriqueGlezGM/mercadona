@@ -121,7 +121,10 @@ th.th-desc,td.td-desc{max-width:40ch;overflow-wrap:anywhere;word-break:break-wor
       <thead>
         <tr>
           <th style="width:90px;">Nº</th>
-          <th class="th-desc">Descripción</th>
+          <th class="th-desc">
+            Descripción
+            <button id="btnSort" type="button" class="btn btn-sm btn-outline-secondary ms-2 py-0" title="Cambiar orden">A→Z</button>
+          </th>
           <th style="width:210px;">Categoría</th>
           <th class="text-end" style="width:140px;">Importe (€)</th>
         </tr>
@@ -150,6 +153,7 @@ th.th-desc,td.td-desc{max-width:40ch;overflow-wrap:anywhere;word-break:break-wor
             <span class="input-group-text">€</span>
             <input id="mfAmount" type="text" class="form-control mono" value="0,00" inputmode="decimal" autocomplete="off">
           </div>
+          <div id="remainHelp" class="form-text">Queda por ajustar: 0,00 €</div>
         </div>
         <div class="col-6 col-sm-3">
           <label class="form-label small mb-1">Categoría</label>
@@ -193,10 +197,12 @@ function itemKey(it) {
   return [String(it.quantity), String(it.description), String(it.unit), String(it.amount)].join('|');
 }
 
-/* Líneas manuales (para ajustar cuando falte importe) */
+/* Líneas manuales y base */
 let manualItems = [];
-// Productos base (solo los detectados en el PDF, sin manuales)
 let baseItems = [];
+
+// Modo de ordenación: 'alpha' (A→Z) por defecto, o 'ticket' (orden de aparición)
+let sortMode = 'alpha';
 
 /* ------------ NUMÉRICO / FORMATO ------------ */
 const toNumberEUR = (s) => {
@@ -311,14 +317,28 @@ function setTable(items){
     }
   }
 
-  // Orden alfabético por descripción (y por importe ascendente dentro del grupo)
-  const sorted = currentItems.slice().sort((a,b) => {
-    const da = normalizeDescKey(a.description);
-    const db = normalizeDescKey(b.description);
-    const cmp = da.localeCompare(db, 'es', { sensitivity:'base' });
-    if (cmp !== 0) return cmp;
-    return (Number(a.amount)||0) - (Number(b.amount)||0);
-  });
+  // Orden según modo
+  let sorted;
+  if (sortMode === 'ticket') {
+    // Orden de aparición; manuales al final (origIndex = +∞)
+    sorted = currentItems.slice().sort((a,b) => {
+      const oa = isFinite(a.origIndex) ? a.origIndex : Number.POSITIVE_INFINITY;
+      const ob = isFinite(b.origIndex) ? b.origIndex : Number.POSITIVE_INFINITY;
+      if (oa !== ob) return oa - ob;
+      const da = normalizeDescKey(a.description);
+      const db = normalizeDescKey(b.description);
+      return da.localeCompare(db, 'es', { sensitivity:'base' });
+    });
+  } else {
+    // A→Z por descripción (defecto)
+    sorted = currentItems.slice().sort((a,b) => {
+      const da = normalizeDescKey(a.description);
+      const db = normalizeDescKey(b.description);
+      const cmp = da.localeCompare(db, 'es', { sensitivity:'base' });
+      if (cmp !== 0) return cmp;
+      return (Number(a.amount)||0) - (Number(b.amount)||0);
+    });
+  }
 
   itemsByKey = new Map();
   let html = "";
@@ -788,6 +808,8 @@ async function processSelectedFile(){
     categoryMap.clear();
     manualItems = [];
     baseItems = items.slice();           // guarda los productos detectados como base
+    // índice de aparición para modo "ticket"
+    baseItems.forEach((it, idx) => { it.origIndex = idx; });
     const total = setTable(baseItems);   // render SIEMPRE partiendo de base
     setCheck(f.name, total);
     setProgress("");
@@ -838,7 +860,6 @@ function updateManualFixUI(){
     box.classList.add('d-none');
     return;
   }
-  
 }
 
 /* ------------ EVENTOS ------------ */
@@ -879,7 +900,8 @@ document.getElementById('manualForm').addEventListener('submit', (ev) => {
     description: desc,
     unit: amtNum,
     amount: amtNum,
-    manualId: Date.now() + '_' + Math.random().toString(36).slice(2,7)
+    manualId: Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    origIndex: Number.POSITIVE_INFINITY // siempre al final en orden ticket
   };
   manualItems.push(it);
 
@@ -899,7 +921,7 @@ document.getElementById('manualForm').addEventListener('submit', (ev) => {
 // Export
 $btnExport.addEventListener('click', exportCategoryImages);
 
-// Auto-abrir picker: intento inmediato + primer toque/tecla (iOS necesita user activation)
+// Auto-abrir picker + botón de orden
 document.addEventListener('DOMContentLoaded', () => {
   const openPicker = () => {
     try {
@@ -915,6 +937,20 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('keydown', onceOpen, { once:true });
 
   updateManualFixUI();
+
+  // Botón de orden en cabecera
+  const $btnSort = document.getElementById('btnSort');
+  if ($btnSort) {
+    const refreshLabel = () => { $btnSort.textContent = (sortMode === 'alpha') ? 'A→Z' : 'Ticket'; };
+    refreshLabel();
+    $btnSort.addEventListener('click', () => {
+      sortMode = (sortMode === 'alpha') ? 'ticket' : 'alpha';
+      refreshLabel();
+      const total = setTable(baseItems);
+      lastCalc = total;
+      setCheck(lastFilename || '', total);
+    });
+  }
 });
 </script>
 </body>
