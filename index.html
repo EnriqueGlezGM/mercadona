@@ -163,6 +163,35 @@ body { padding-top: 0; }
   </nav>
   <div id="nav-spacer" aria-hidden="true"></div>
 
+  <!-- Modal: Editar categoría -->
+  <div class="modal fade" id="catEditModal" tabindex="-1" aria-labelledby="catEditLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="catEditLabel">Editar categoría</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <form id="catEditForm" class="row g-3">
+            <div class="col-8">
+              <label for="catEditName" class="form-label small mb-1">Nombre</label>
+              <input type="text" id="catEditName" class="form-control" maxlength="40" required>
+            </div>
+            <div class="col-4">
+              <label for="catEditColor" class="form-label small mb-1">Color</label>
+              <input type="color" id="catEditColor" class="form-control form-control-color" value="#22c55e" title="Elige color">
+            </div>
+          </form>
+          <div id="catEditHint" class="form-text">Pulsa “Guardar” para aplicar los cambios.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="catEditSave" class="btn btn-primary">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <input id="file" type="file" accept="application/pdf" class="form-control my-2">
 
   <div id="meta" class="small text-muted"></div>
@@ -256,6 +285,18 @@ let sortMode = 'alpha';
 let categories = [];
 let activeCategoryId = null;
 
+// Estado edición de categoría
+let catEditId = null;
+let catEditModal = null;
+function getCategoryById(id){ return categories.find(c => c.id === id); }
+function slugifyName(name){
+  return String(name || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,'-').replace(/[^a-z0-9-]/gi,'')
+    .slice(0, 40);
+}
+
 function hexToRGBA(hex, alpha=0.2){
   hex = String(hex||'').trim();
   const m = hex.match(/^#?([0-9a-f]{6})$/i);
@@ -313,9 +354,97 @@ function renderCatBar(){
     b.addEventListener('click', ()=>{
       const id = b.getAttribute('data-cat-id');
       if (!id) return;
-      setActiveCategory(id);
+      if (id === activeCategoryId) {
+        openCategoryEditor(id); // re-click sobre la activa -> editar
+      } else {
+        setActiveCategory(id);
+      }
     });
   });
+// Abrir modal de edición para la categoría activa (o id dado)
+function openCategoryEditor(id){
+  const cid = id || activeCategoryId;
+  const cat = getCategoryById(cid);
+  if (!cat) return;
+  catEditId = cid;
+
+  // Prefill
+  const $name = document.getElementById('catEditName');
+  const $color = document.getElementById('catEditColor');
+  if ($name) $name.value = cat.name || '';
+  if ($color) $color.value = /^#[0-9a-f]{6}$/i.test(cat.color||'') ? cat.color : '#22c55e';
+
+  // Show modal
+  if (!catEditModal){
+    const $modal = document.getElementById('catEditModal');
+    catEditModal = new bootstrap.Modal($modal);
+  }
+  catEditModal.show();
+}
+
+// Guardar cambios de edición
+function saveCategoryEditor(){
+  if (!catEditId) return;
+  const $name = document.getElementById('catEditName');
+  const $color = document.getElementById('catEditColor');
+  const newName = String($name.value || '').trim();
+  const newColor = String($color.value || '').trim();
+
+  if (!newName){ alert('Pon un nombre.'); return; }
+  if (!/^#[0-9a-f]{6}$/i.test(newColor)){ alert('Color inválido.'); return; }
+
+  const cat = getCategoryById(catEditId);
+  if (!cat) return;
+
+  // Mantener id si es locked; si no, permitir cambiar slug si cambia el nombre
+  const oldId = cat.id;
+  cat.name = newName;
+  cat.color = newColor;
+
+  // Si no es bloqueada y el nombre cambia, recalcular id respetando colisiones
+  if (!cat.locked){
+    const proposed = slugifyName(newName) || oldId;
+    if (proposed !== oldId){
+      let unique = proposed;
+      let k = 2;
+      while (categories.some(c => c.id === unique && c !== cat)){
+        unique = proposed + '-' + (k++);
+      }
+      // Propagar cambio de id en los mapas asignados
+      if (unique !== oldId){
+        // Cambiar id en la categoría
+        cat.id = unique;
+        // Remapear categoryMap (key -> catId)
+        const entries = Array.from(categoryMap.entries());
+        for (const [kkey, cid] of entries){
+          if (cid === oldId) {
+            categoryMap.set(kkey, unique);
+          }
+        }
+        // Actualizar selección activa si procede
+        if (activeCategoryId === oldId) activeCategoryId = unique;
+      }
+    }
+  }
+
+  saveCategories();
+  // Re-render: navbar, tabla (para recolorear), resumen, dropdown manual y spacer
+  renderCatBar();
+  const total = setTable(baseItems);
+  lastCalc = total;
+  setCheck(lastFilename || '', total);
+  renderManualCatDropdown();
+  updateNavSpacer();
+
+  if (catEditModal) catEditModal.hide();
+  catEditId = null;
+}
+// Guardar desde el modal
+document.addEventListener('click', (ev)=>{
+  const btn = ev.target.closest('#catEditSave');
+  if (!btn) return;
+  saveCategoryEditor();
+});
   const addBtn = bar.querySelector('#newCatAdd');
   if (addBtn){
     addBtn.addEventListener('click', ()=>{
