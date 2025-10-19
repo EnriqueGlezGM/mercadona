@@ -104,7 +104,7 @@ body { padding-top: 0; }
 .row-assigned > * { background-color: var(--cat-bg) !important; }
 
 /* Columna de categoría con bolita de color */
-.cat-cell { white-space: nowrap; }
+.cat-cell { white-space: nowrap; text-align:center; }
 .cat-dot { display:inline-block; width:10px; height:10px; border-radius:50%; border:1px solid rgba(0,0,0,.25); margin-right:.4rem; vertical-align:middle; }
 .cat-name { vertical-align:middle; }
 
@@ -125,6 +125,25 @@ body { padding-top: 0; }
 .export-card .total { font-weight: 700; }
 /* keep export root offscreen */
 #export-root { position: fixed; left: -200vw; top: 0; }
+/* Aumentar ligeramente el área táctil de las celdas (desktop) */
+.table.table-sm td,
+.table.table-sm th {
+  padding: .7rem .75rem; /* antes ~.5rem */
+}
+
+/* En móvil, un pelín más todavía */
+@media (max-width:576px){
+  .table.table-sm td,
+  .table.table-sm th {
+    padding: .85rem .8rem;
+  }
+}
+
+/* Que toda el área de la descripción sea clicable (no solo el texto subrayado) */
+.td-desc .desc-link {
+  display: block;
+  padding: .1rem 0; /* un poco de aire vertical extra */
+}
 </style>
 </head>
 <body class="bg-light">
@@ -158,7 +177,7 @@ body { padding-top: 0; }
             Descripción
             <button id="btnSort" type="button" class="btn btn-sm btn-outline-secondary ms-2 py-0" title="Cambiar orden">A→Z</button>
           </th>
-          <th style="width:180px;">Categoría</th>
+          <th style="width:180px;"></th>
           <th class="text-end" style="width:140px;">Importe (€)</th>
         </tr>
       </thead>
@@ -188,7 +207,7 @@ body { padding-top: 0; }
           </div>
         </div>
         <div class="col-6 col-sm-3">
-          <label class="form-label small mb-1">Categoría</label>
+          <label class="form-label small mb-1"></label>
           <div id="mfCatWrap" class="dropdown w-100"></div>
           <input id="mfCatVal" type="hidden" value="">
         </div>
@@ -539,7 +558,7 @@ function setTable(items){
       </td>
       <td class="cat-cell">
         ${catId
-          ? `<span class="cat-dot" style="background:${color}"></span><span class="cat-name">${escapeHtml(name)}</span>`
+          ? `<span class="cat-dot" style="background:${color}" title="${escapeHtml(name)}"></span>`
           : `—`
         }
       </td>
