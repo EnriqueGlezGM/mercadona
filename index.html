@@ -27,23 +27,19 @@
 <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
+/* Dropdown de categorías (form manual) */
+.cat-dd-btn { display:flex; align-items:center; justify-content:space-between; width:100%; }
+.cat-dd-label { display:inline-flex; align-items:center; gap:.5rem; }
+.cat-dd-item { display:flex; align-items:center; gap:.5rem; width:100%; }
+.cat-dd-dot { width:12px; height:12px; border-radius:50%; border:1px solid rgba(0,0,0,.25); }
 body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
 .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-/* Chips de categoría */
-.chip { border: 1px solid rgba(0,0,0,.125); }
-.chip.active { color:#fff; border-color: transparent; }
-.chip[data-cat="alberto"].active { background:#dc3545; }
-.chip[data-cat="kike"].active    { background:#0d6efd; }
-.chip[data-cat="comun"].active   { background:#ffc107; color:#111; }
+/* Chips antiguas desactivadas (ya no se usan en tabla) */
+.chip { display:none; }
 
-/* Fila coloreada */
-tr.cat-alberto { background: #fde2e4; box-shadow: inset 4px 0 0 0 #dc3545; }
-tr.cat-kike    { background: #e7f0ff; box-shadow: inset 4px 0 0 0 #0d6efd; }
-tr.cat-comun   { background: #fff6d6; box-shadow: inset 4px 0 0 0 #ffc107; }
-tbody tr.cat-alberto>* { background-color: #fde2e4 !important; }
-tbody tr.cat-kike>*    { background-color: #e7f0ff !important; }
-tbody tr.cat-comun>*   { background-color: #fff6d6 !important; }
+/* Fila coloreada (dinámica por categoría) */
+.row-colored { box-shadow: inset 4px 0 0 0 var(--cat-color, transparent); }
 
 /* Resumen */
 .catsum-grid { display:flex; flex-wrap:wrap; gap:.5rem; }
@@ -66,10 +62,8 @@ th.th-desc,td.td-desc{max-width:40ch;overflow-wrap:anywhere;word-break:break-wor
 /* Dark Mode */
 :root[data-bs-theme="dark"] body.bg-light { background:#0b0f14!important; color:#ddd; }
 :root[data-bs-theme="dark"] .table thead{background:#111827;color:#eee;}
-:root[data-bs-theme="dark"] .chip{border-color:#444;color:#eee;}
-:root[data-bs-theme="dark"] tr.cat-alberto>*{background-color:#3b1116!important;}
-:root[data-bs-theme="dark"] tr.cat-kike>*{background-color:#0f1c35!important;}
-:root[data-bs-theme="dark"] tr.cat-comun>*{background-color:#352b0f!important;}
+:root[data-bs-theme="dark"] .catsum-grid .tag{background:#12161c;border-color:#202938;}
+:root[data-bs-theme="dark"] a.desc-link .desc-text{color:#cbd5e1;}
 
 /* Formulario corrección manual */
 #manualFix .form-text{margin-top:.25rem;}
@@ -78,9 +72,40 @@ th.th-desc,td.td-desc{max-width:40ch;overflow-wrap:anywhere;word-break:break-wor
   .table{font-size:.95rem;}
   td,th{padding:.5rem;}
   td.td-desc,th.th-desc{max-width:26ch;}
-  .chip.btn{padding:.15rem .45rem;font-size:.8rem;}
 }
 .btn-del { line-height: 1; padding: .1rem .35rem; }
+
+/* Navbar categorías */
+.catbar { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.catbtn { display:inline-flex; align-items:center; gap:.4rem; border:1px solid var(--bs-border-color, #e5e7eb); background: var(--bs-body-bg, #fff); padding:.25rem .5rem; border-radius: 999px; cursor:pointer; }
+.cat-swatch { width:14px; height:14px; border-radius:50%; border:1px solid rgba(0,0,0,.2); display:inline-block; }
+.catbtn.active { outline:2px solid currentColor; outline-offset:2px; }
+.catbtn .name { font-size:.9rem; }
+.catbar .sep { width:1px; height:20px; background:var(--bs-border-color, #e5e7eb); margin:0 .25rem; }
+.catbar .btn-none { border-style:dashed; }
+.cat-new { display:flex; align-items:center; gap:.35rem; }
+.cat-new input[type="text"] { width:11ch; }
+.cat-new input[type="color"] { width:32px; height:32px; padding:0; border:1px solid var(--bs-border-color, #e5e7eb); border-radius:6px; }
+
+/* Fixed navbar spacing */
+body { padding-top: 64px; }
+@media (max-width:576px){ body { padding-top: 84px; } }
+
+/* Fila asignada (color visible) */
+.row-assigned {
+  background-color: var(--cat-bg) !important;
+  box-shadow: inset 6px 0 0 0 var(--cat-color);
+  transition: background-color .15s ease;
+}
+.row-assigned:hover { filter: brightness(1.02); }
+
+/* Pintar todas las celdas cuando hay categoría (como en old.html) */
+.row-assigned > * { background-color: var(--cat-bg) !important; }
+
+/* Columna de categoría con bolita de color */
+.cat-cell { white-space: nowrap; }
+.cat-dot { display:inline-block; width:10px; height:10px; border-radius:50%; border:1px solid rgba(0,0,0,.25); margin-right:.4rem; vertical-align:middle; }
+.cat-name { vertical-align:middle; }
 
 /* --- Export card styles (restored) --- */
 .export-card {
@@ -97,19 +122,25 @@ th.th-desc,td.td-desc{max-width:40ch;overflow-wrap:anywhere;word-break:break-wor
 .export-card .right { text-align: right; font-variant-numeric: tabular-nums; }
 .export-card .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .export-card .total { font-weight: 700; }
-.hdr-alberto { color:#dc3545; }
-.hdr-kike   { color:#0d6efd; }
-.hdr-comun  { color:#ffc107; }
 /* keep export root offscreen */
 #export-root { position: fixed; left: -200vw; top: 0; }
 </style>
 </head>
 <body class="bg-light">
 <div class="container py-3">
-  <div class="d-flex align-items-center justify-content-between">
-    <h1 class="h5 m-0">Lector de ticket (Mercadona)</h1>
-    <span id="progress" class="small text-muted"></span>
-  </div>
+
+  <!-- Navbar con título y selector de categorías -->
+  <nav class="navbar fixed-top bg-body-tertiary shadow-sm p-2">
+    <div class="container-fluid p-0">
+      <div class="d-flex flex-wrap align-items-center justify-content-between w-100 gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="navbar-brand mb-0 h6">Lector ticket (Mercadona)</span>
+          <small id="progress" class="text-muted"></small>
+        </div>
+        <div class="catbar" id="catBar"><!-- Render por JS --></div>
+      </div>
+    </div>
+  </nav>
 
   <input id="file" type="file" accept="application/pdf" class="form-control my-2">
 
@@ -125,7 +156,7 @@ th.th-desc,td.td-desc{max-width:40ch;overflow-wrap:anywhere;word-break:break-wor
             Descripción
             <button id="btnSort" type="button" class="btn btn-sm btn-outline-secondary ms-2 py-0" title="Cambiar orden">A→Z</button>
           </th>
-          <th style="width:210px;">Categoría</th>
+          <th style="width:180px;">Categoría</th>
           <th class="text-end" style="width:140px;">Importe (€)</th>
         </tr>
       </thead>
@@ -153,15 +184,11 @@ th.th-desc,td.td-desc{max-width:40ch;overflow-wrap:anywhere;word-break:break-wor
             <span class="input-group-text">€</span>
             <input id="mfAmount" type="text" class="form-control mono" value="0,00" inputmode="decimal" autocomplete="off">
           </div>
-          <div id="remainHelp" class="form-text">Queda por ajustar: 0,00 €</div>
         </div>
         <div class="col-6 col-sm-3">
           <label class="form-label small mb-1">Categoría</label>
-          <select id="mfCat" class="form-select">
-            <option value="alberto">Alberto</option>
-            <option value="kike">Kike</option>
-            <option value="comun" selected>Común</option>
-          </select>
+          <div id="mfCatWrap" class="dropdown w-100"></div>
+          <input id="mfCatVal" type="hidden" value="">
         </div>
         <div class="col-12">
           <button id="btnAddManual" class="btn btn-sm btn-warning">Añadir línea</button>
@@ -189,8 +216,8 @@ let lastExpected = NaN;
 let lastCalc = NaN;
 let lastFilename = '';
 
-/* Categorías por fila */
-const categoryMap = new Map(); // key -> 'alberto'|'kike'|'comun'
+/* Categorías por fila (key -> categoryId) */
+const categoryMap = new Map();
 let currentItems = [];
 let itemsByKey = new Map();
 function itemKey(it) {
@@ -201,8 +228,135 @@ function itemKey(it) {
 let manualItems = [];
 let baseItems = [];
 
-// Modo de ordenación: 'alpha' (A→Z) por defecto, o 'ticket' (orden de aparición)
+/* Orden */
 let sortMode = 'alpha';
+
+/* -------- CATEGORÍAS DINÁMICAS (NAVBAR) -------- */
+let categories = [];
+let activeCategoryId = null;
+
+function hexToRGBA(hex, alpha=0.2){
+  hex = String(hex||'').trim();
+  const m = hex.match(/^#?([0-9a-f]{6})$/i);
+  if(!m) return `rgba(0,0,0,${alpha})`;
+  const i = parseInt(m[1],16);
+  const r = (i>>16)&255, g=(i>>8)&255, b=i&255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function defaultCategories(){
+  return [
+    {id:'alberto', name:'Alberto', color:'#dc3545', locked:true},
+    {id:'kike',    name:'Kike',    color:'#0d6efd', locked:true},
+    {id:'comun',   name:'Común',   color:'#ffc107', locked:true}
+  ];
+}
+function loadCategories(){
+  try{
+    const raw = localStorage.getItem('mc_cats');
+    const act = localStorage.getItem('mc_cats_active');
+    categories = raw ? JSON.parse(raw) : defaultCategories();
+    activeCategoryId = act || categories[0]?.id || null;
+  }catch(e){
+    categories = defaultCategories();
+    activeCategoryId = categories[0]?.id || null;
+  }
+}
+function saveCategories(){
+  localStorage.setItem('mc_cats', JSON.stringify(categories));
+  if (activeCategoryId !== null) localStorage.setItem('mc_cats_active', activeCategoryId);
+}
+function setActiveCategory(id){
+  activeCategoryId = id || null;
+  saveCategories();
+  renderCatBar();
+}
+function renderCatBar(){
+  const bar = document.getElementById('catBar');
+  if (!bar) return;
+  const btn = (c) => `
+    <button type="button" class="catbtn ${activeCategoryId===c.id?'active':''}" data-cat-id="${c.id}" style="color:${c.color}">
+      <span class="cat-swatch" style="background:${c.color}"></span>
+      <span class="name">${escapeHtml(c.name)}</span>
+    </button>`;
+  const htmlCats = categories.map(btn).join('');
+  const newForm = `
+    <span class="sep"></span>
+    <div class="cat-new" id="catNew">
+      <input id="newCatName" type="text" class="form-control form-control-sm" placeholder="Nombre">
+      <input id="newCatColor" type="color" value="#22c55e" aria-label="Color">
+      <button id="newCatAdd" type="button" class="btn btn-sm btn-success">+</button>
+    </div>`;
+  bar.innerHTML = htmlCats + newForm;
+
+  bar.querySelectorAll('.catbtn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const id = b.getAttribute('data-cat-id');
+      if (!id) return;
+      setActiveCategory(id);
+    });
+  });
+  const addBtn = bar.querySelector('#newCatAdd');
+  if (addBtn){
+    addBtn.addEventListener('click', ()=>{
+      const name = String(bar.querySelector('#newCatName').value||'').trim();
+      const color = String(bar.querySelector('#newCatColor').value||'').trim();
+      if (!name){ alert('Pon un nombre para la categoría'); return; }
+      const id = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+      if (!/^#[0-9a-f]{6}$/i.test(color)){ alert('Color inválido'); return; }
+      if (categories.some(c=>c.id===id)){ alert('Ya existe una categoría con ese nombre'); return; }
+      categories.push({id, name, color, locked:false});
+      setActiveCategory(id);
+      saveCategories();
+      const total = setTable(baseItems);
+      lastCalc = total;
+      setCheck(lastFilename || '', total);
+      renderManualCatDropdown();
+    });
+  }
+}
+
+// Renderiza un dropdown Bootstrap con colores para la categoría del formulario manual
+function renderManualCatDropdown(){
+  const wrap = document.getElementById('mfCatWrap');
+  const hidden = document.getElementById('mfCatVal');
+  if (!wrap || !hidden) return;
+
+  const def = activeCategoryId || (categories[0] && categories[0].id) || '';
+  const defObj = categories.find(c => c.id === def) || categories[0] || {id:'', name:'', color:'#888'};
+  hidden.value = defObj.id;
+
+  wrap.innerHTML = `
+    <button class="btn btn-outline-secondary dropdown-toggle cat-dd-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+      <span class="cat-dd-label">
+        <span class="cat-dd-dot" style="background:${defObj.color}"></span>
+        <span class="cat-dd-name">${escapeHtml(defObj.name)}</span>
+      </span>
+    </button>
+    <ul class="dropdown-menu w-100">
+      ${categories.map(c => `
+        <li>
+          <button type="button" class="dropdown-item cat-dd-item" data-id="${c.id}" data-color="${c.color}">
+            <span class="cat-dd-dot" style="background:${c.color}"></span>
+            <span>${escapeHtml(c.name)}</span>
+          </button>
+        </li>
+      `).join('')}
+    </ul>
+  `;
+
+  wrap.querySelectorAll('.cat-dd-item').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-id');
+      const color = btn.getAttribute('data-color');
+      const name = btn.textContent.trim();
+      hidden.value = id;
+      const lab = wrap.querySelector('.cat-dd-name');
+      const dot = wrap.querySelector('.cat-dd-dot');
+      if (lab) lab.textContent = name;
+      if (dot) dot.style.background = color;
+    });
+  });
+}
 
 /* ------------ NUMÉRICO / FORMATO ------------ */
 const toNumberEUR = (s) => {
@@ -213,7 +367,6 @@ const toNumberEUR = (s) => {
 };
 const toEUR = (n) => isFinite(n) ? n.toLocaleString("es-ES",{minimumFractionDigits:2, maximumFractionDigits:2}) : "0,00";
 function nearlyEqual(a,b,eps=0.01){ return isFinite(a)&&isFinite(b)&&Math.abs(a-b) <= eps; }
-function formatEUR(n){ return (isFinite(n)? n:0).toLocaleString('es-ES',{minimumFractionDigits:2, maximumFractionDigits:2}); }
 function sanitizeAmountInput(str){
   if (typeof str !== 'string') str = String(str ?? '');
   str = str.trim().replace(/[€\s]/g,'').replace(/\./g,'').replace(',', '.');
@@ -249,17 +402,17 @@ function setCheck(filename, totalCalc){
   updateManualFixUI();
 }
 
-/* ------------ HELPERS TEXTO / BUSQUEDA ------------ */
+/* ------------ HELPERS TEXTO / BÚSQUEDA ------------ */
 function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function normalizeDescKey(s){
   s = String(s||'').toLowerCase();
-  s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); // quita tildes
+  s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); // tildes
   s = s.replace(/\s{2,}/g,' ').trim();
   return s;
 }
 function buildSearchURL(desc){
   const q = encodeURIComponent(`${String(desc||'').trim()} Mercadona`);
-  return `https://www.google.com/search?tbm=isch&q=${q}`; // Google Imágenes
+  return `https://www.google.com/search?tbm=isch&q=${q}`;
 }
 
 /* ------------ ICONOS PRECIO POR DESCRIPCIÓN ------------ */
@@ -275,7 +428,6 @@ function priceFlagForRole(role){
 
 /* ------------ RENDER TABLA ------------ */
 function setTable(items){
-  // Agrega líneas manuales si existen
   items = (items || []).slice();
   if (Array.isArray(manualItems) && manualItems.length){
     items = items.concat(manualItems);
@@ -317,10 +469,9 @@ function setTable(items){
     }
   }
 
-  // Orden según modo
+  // Orden
   let sorted;
   if (sortMode === 'ticket') {
-    // Orden de aparición; manuales al final (origIndex = +∞)
     sorted = currentItems.slice().sort((a,b) => {
       const oa = isFinite(a.origIndex) ? a.origIndex : Number.POSITIVE_INFINITY;
       const ob = isFinite(b.origIndex) ? b.origIndex : Number.POSITIVE_INFINITY;
@@ -330,7 +481,6 @@ function setTable(items){
       return da.localeCompare(db, 'es', { sensitivity:'base' });
     });
   } else {
-    // A→Z por descripción (defecto)
     sorted = currentItems.slice().sort((a,b) => {
       const da = normalizeDescKey(a.description);
       const db = normalizeDescKey(b.description);
@@ -347,21 +497,38 @@ function setTable(items){
     const key = itemKey(r);
     itemsByKey.set(key, r);
     total += r.amount;
-    const cat = categoryMap.get(key) || '';
-    const role = roleByKey.get(key) || '';
+
+    const catId = categoryMap.get(key) || '';
+    const catObj = categories.find(c => c.id === catId);
+    const color = catObj ? catObj.color : '';
+    const name  = catObj ? catObj.name  : '';
+    const bg = color ? hexToRGBA(color, 0.22) : '';
+    const style = color ? `style="--cat-color:${color}; --cat-bg:${bg}"` : '';
+    const rowClass = catId ? 'row-assigned' : '';
+    const role = (roleByKey.get(key) || '');
     const flag = priceFlagForRole(role);
-    html += `<tr data-key="${escapeHtml(key)}" data-manual-id="${r.manualId ? escapeHtml(String(r.manualId)) : ''}" class="${cat ? 'cat-'+cat : ''}">
+
+    html += `<tr data-key="${escapeHtml(key)}"
+                 data-manual-id="${r.manualId ? escapeHtml(String(r.manualId)) : ''}"
+                 data-cat-id="${catId}"
+                 class="${rowClass}"
+                 ${style}>
       <td class="mono">
         ${r.manualId
           ? `<button type="button" class="btn btn-sm btn-outline-danger btn-del" title="Eliminar línea manual">✖</button>`
           : `${escapeHtml(String(r.quantity))}`
         }
       </td>
-      <td class="td-desc"><a class="desc-link" href="${buildSearchURL(r.description)}" target="_blank" rel="noopener">${flag}<span class="desc-text">${escapeHtml(r.description)}</span></a></td>
-      <td class="text-nowrap">
-        <button type="button" class="chip btn btn-sm ${cat==='alberto'?'active':''}" data-cat="alberto">Alberto</button>
-        <button type="button" class="chip btn btn-sm ${cat==='kike'?'active':''}" data-cat="kike">Kike</button>
-        <button type="button" class="chip btn btn-sm ${cat==='comun'?'active':''}" data-cat="comun">Común</button>
+      <td class="td-desc">
+        <a class="desc-link" href="${buildSearchURL(r.description)}" target="_blank" rel="noopener">
+          ${flag}<span class="desc-text">${escapeHtml(r.description)}</span>
+        </a>
+      </td>
+      <td class="cat-cell">
+        ${catId
+          ? `<span class="cat-dot" style="background:${color}"></span><span class="cat-name">${escapeHtml(name)}</span>`
+          : `—`
+        }
       </td>
       <td class="text-end mono">${toEUR(r.amount)}</td>
     </tr>`;
@@ -381,19 +548,23 @@ function setTable(items){
 
 /* ------------ RESUMEN Y COPIAR TOTALES ------------ */
 function updateCategorySummary() {
-  const sums = { alberto: {n:0, total:0}, kike: {n:0, total:0}, comun: {n:0, total:0} };
-  for (const [key, cat] of categoryMap.entries()) {
+  const sums = {};
+  for (const c of categories) sums[c.id] = { n:0, total:0, color:c.color, name:c.name };
+  for (const [key, catId] of categoryMap.entries()) {
     const it = itemsByKey.get(key);
-    if (!it || !sums[cat]) continue;
-    sums[cat].n += 1;
-    sums[cat].total += Number(it.amount) || 0;
+    if (!it || !(catId in sums)) continue;
+    sums[catId].n += 1;
+    sums[catId].total += Number(it.amount) || 0;
   }
-  $catsum.innerHTML =
-    '<div class="catsum-grid">' +
-    `<span class="tag" data-total="${toEUR(sums.alberto.total)}" title="Click para copiar total de Alberto"><strong class="text-danger">Alberto</strong> <span class="n">(${sums.alberto.n}) ${toEUR(sums.alberto.total)}</span></span>` +
-    `<span class="tag" data-total="${toEUR(sums.kike.total)}" title="Click para copiar total de Kike"><strong class="text-primary">Kike</strong> <span class="n">(${sums.kike.n}) ${toEUR(sums.kike.total)}</span></span>` +
-    `<span class="tag" data-total="${toEUR(sums.comun.total)}" title="Click para copiar total de Común"><strong class="text-warning">Común</strong> <span class="n">(${sums.comun.n}) ${toEUR(sums.comun.total)}</span></span>` +
-    '</div>';
+  const parts = categories.map(c=>{
+    const s = sums[c.id];
+    return `<span class="tag" data-total="${toEUR(s.total)}" title="Click para copiar total de ${escapeHtml(c.name)}" style="border-color:${c.color}22;">
+              <span class="cat-swatch" style="background:${c.color}"></span>
+              <strong style="color:${c.color}">${escapeHtml(c.name)}</strong>
+              <span class="n">(${s.n}) ${toEUR(s.total)}</span>
+            </span>`;
+  }).join('');
+  $catsum.innerHTML = '<div class="catsum-grid">' + parts + '</div>';
 }
 $catsum.addEventListener('click', async (ev) => {
   const tag = ev.target.closest('.tag');
@@ -410,15 +581,12 @@ $catsum.addEventListener('click', async (ev) => {
 });
 
 /* ------------ EXPORTAR COMO IMAGEN ------------ */
-function friendlyCat(cat) {
-  return cat === 'alberto' ? 'Alberto' : (cat === 'kike' ? 'Kike' : 'Común');
-}
-function buildExportCard(cat, items) {
+function buildExportCard(catObj, items) {
   const wrap = document.createElement('div');
   wrap.className = 'export-card';
   const total = items.reduce((a,b)=> a + (Number(b.amount)||0), 0);
   wrap.innerHTML = `
-    <h2 class="hdr-${cat}">Lista de ${friendlyCat(cat)}</h2>
+    <h2 style="color:${catObj.color}">Lista ${escapeHtml(catObj.name)}</h2>
     <table>
       <thead>
         <tr>
@@ -446,22 +614,20 @@ function buildExportCard(cat, items) {
   return wrap;
 }
 async function exportCategoryImages() {
-  if (!window.html2canvas) {
-    alert('No se pudo cargar html2canvas.');
-    return;
-  }
+  if (!window.html2canvas) { alert('No se pudo cargar html2canvas.'); return; }
   if (lastCheckOk === false) {
     const msg = `⚠️ El total calculado (${toEUR(lastCalc)}) NO coincide con el del archivo (${toEUR(lastExpected)}).\n\n¿Quieres exportar igualmente?`;
     if (!confirm(msg)) return;
   }
-  const cats = ['alberto','kike','comun'];
-  const byCat = { alberto: [], kike: [], comun: [] };
+  // Construir map dinámico por categoría
+  const byCat = {};
+  for (const c of categories) byCat[c.id] = [];
   for (const tr of document.querySelectorAll('#tbl tbody tr[data-key]')) {
     const key = tr.getAttribute('data-key');
     if (!key) continue;
-    const cat = categoryMap.get(key);
+    const catId = categoryMap.get(key);
     const it = itemsByKey.get(key);
-    if (cat && it) byCat[cat].push(it);
+    if (catId && it && byCat[catId]) byCat[catId].push(it);
   }
   const wrapper = document.createElement('div');
   wrapper.style.width = '980px';
@@ -485,10 +651,10 @@ async function exportCategoryImages() {
   wrapper.appendChild(meta);
 
   let added = 0;
-  for (const cat of cats) {
-    const arr = byCat[cat];
+  for (const c of categories) {
+    const arr = byCat[c.id] || [];
     if (!arr.length) continue;
-    const card = buildExportCard(cat, arr);
+    const card = buildExportCard(c, arr);
     card.style.marginBottom = '16px';
     wrapper.appendChild(card);
     added++;
@@ -528,28 +694,37 @@ function updateExportButtonState() {
     : 'Asigna categoría a todas las filas para exportar';
 }
 
-/* ------------ CLIC EN CHIPS ------------ */
+/* ------------ CLIC EN FILA (asignación) ------------ */
 document.getElementById('tbl').addEventListener('click', (ev) => {
-  const btn = ev.target.closest('.chip');
-  if (!btn) return;
-  const tr = ev.target.closest('tr');
+  const tr = ev.target.closest('tr[data-key]');
+  if (!tr) return;
+  if (ev.target.closest('.btn-del')) return;
+  const key = tr.getAttribute('data-key');
+  if (!key) return;
+
+  if (!activeCategoryId) {
+    if (categoryMap.has(key)) categoryMap.delete(key);
+  } else {
+    const prev = categoryMap.get(key);
+    if (prev === activeCategoryId) categoryMap.delete(key);
+    else categoryMap.set(key, activeCategoryId);
+  }
+  const total = setTable(baseItems);
+  lastCalc = total;
+  setCheck(lastFilename || '', total);
+});
+document.getElementById('tbl').addEventListener('dblclick', (ev) => {
+  const tr = ev.target.closest('tr[data-key]');
   if (!tr) return;
   const key = tr.getAttribute('data-key');
   if (!key) return;
-  const cat = btn.getAttribute('data-cat');
-  const was = categoryMap.get(key) || '';
-  const next = (was === cat) ? '' : cat;
-  if (next) categoryMap.set(key, next); else categoryMap.delete(key);
-  // UI
-  tr.classList.remove('cat-alberto','cat-kike','cat-comun');
-  if (next) tr.classList.add('cat-'+next);
-  tr.querySelectorAll('.chip').forEach(b => b.classList.toggle('active', b.getAttribute('data-cat')===next));
-  // Estado
-  updateCategorySummary();
-  updateExportButtonState();
+  if (categoryMap.has(key)) categoryMap.delete(key);
+  const total = setTable(baseItems);
+  lastCalc = total;
+  setCheck(lastFilename || '', total);
 });
 
-// Eliminar línea manual con botón ✖ en la columna "Nº"
+// Eliminar línea manual con botón ✖
 document.getElementById('tbl').addEventListener('click', (ev) => {
   const del = ev.target.closest('.btn-del');
   if (!del) return;
@@ -558,19 +733,13 @@ document.getElementById('tbl').addEventListener('click', (ev) => {
   const mid = tr.getAttribute('data-manual-id');
   if (!mid) return;
 
-  // Buscar el item manual correspondiente
   const idx = manualItems.findIndex(it => String(it.manualId) === String(mid));
   if (idx === -1) return;
-
   const it = manualItems[idx];
-
-  // Borrar categoría asociada si la hubiera
   const k = itemKey(it);
   if (categoryMap.has(k)) categoryMap.delete(k);
-
-  // Eliminar del array y re-render
   manualItems.splice(idx, 1);
-  const total = setTable(baseItems); // setTable integra manualItems
+  const total = setTable(baseItems);
   lastCalc = total;
   setCheck(lastFilename || '', total);
 }, true);
@@ -628,10 +797,10 @@ async function pdfToTextLinesOCR(buf){
 /* ------------ HEURÍSTICAS ------------ */
 function normalizeLine(s){
   s = String(s||"");
-  s = s.replace(/(\d)[oO](\d)/g, '$10$2');       // 1O2 -> 102
-  s = s.replace(/,(\d)[sS]\b/g, ',$15');         // 18,4S -> 18,45
-  s = s.replace(/,(\d)[oO]\b/g, ',$10');         // 18,4O -> 18,40
-  s = s.replace(/\s*[€\u0080]\s*/g, ' €');       
+  s = s.replace(/(\d)[oO](\d)/g, '$10$2');
+  s = s.replace(/,(\d)[sS]\b/g, ',$15');
+  s = s.replace(/,(\d)[oO]\b/g, ',$10');
+  s = s.replace(/\s*[€\u0080]\s*/g, ' €');
   s = s.replace(/\s{2,}/g,' ').trim();
   return s;
 }
@@ -807,10 +976,9 @@ async function processSelectedFile(){
     const items = parseProducts(section);
     categoryMap.clear();
     manualItems = [];
-    baseItems = items.slice();           // guarda los productos detectados como base
-    // índice de aparición para modo "ticket"
+    baseItems = items.slice();
     baseItems.forEach((it, idx) => { it.origIndex = idx; });
-    const total = setTable(baseItems);   // render SIEMPRE partiendo de base
+    const total = setTable(baseItems);
     setCheck(f.name, total);
     setProgress("");
   } catch (e){
@@ -823,13 +991,12 @@ async function processSelectedFile(){
 /* ------------ UI CORRECCIÓN MANUAL ------------ */
 function getRemaining(){
   if (!isFinite(lastExpected) || !isFinite(lastCalc)) return 0;
-  return lastExpected - lastCalc; // + => falta ; - => sobra
+  return lastExpected - lastCalc;
 }
 function updateManualFixUI(){
   const box = document.getElementById('manualFix');
   const msg = document.getElementById('diffMsg');
   const amtInput = document.getElementById('mfAmount');
-  const help = document.getElementById('remainHelp');
   const canCompare = isFinite(lastExpected) && isFinite(lastCalc);
   if (!box || !msg || !amtInput) return;
   if (!canCompare){
@@ -882,7 +1049,7 @@ $mfAmount.addEventListener('blur', () => {
 document.getElementById('manualForm').addEventListener('submit', (ev) => {
   ev.preventDefault();
   const desc = document.getElementById('mfDesc').value.trim();
-  const cat = document.getElementById('mfCat').value;
+  const cat = document.getElementById('mfCatVal').value;
   const amtStr = document.getElementById('mfAmount').value;
   const amtNum = sanitizeAmountInput(amtStr);
   const rem = getRemaining();
@@ -901,7 +1068,7 @@ document.getElementById('manualForm').addEventListener('submit', (ev) => {
     unit: amtNum,
     amount: amtNum,
     manualId: Date.now() + '_' + Math.random().toString(36).slice(2,7),
-    origIndex: Number.POSITIVE_INFINITY // siempre al final en orden ticket
+    origIndex: Number.POSITIVE_INFINITY
   };
   manualItems.push(it);
 
@@ -921,7 +1088,7 @@ document.getElementById('manualForm').addEventListener('submit', (ev) => {
 // Export
 $btnExport.addEventListener('click', exportCategoryImages);
 
-// Auto-abrir picker + botón de orden
+// Auto-abrir picker + inicializar categorías y botón de orden
 document.addEventListener('DOMContentLoaded', () => {
   const openPicker = () => {
     try {
@@ -936,7 +1103,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('pointerdown', onceOpen, { once:true });
   window.addEventListener('keydown', onceOpen, { once:true });
 
+  loadCategories();
+  renderCatBar();
   updateManualFixUI();
+  renderManualCatDropdown();
 
   // Botón de orden en cabecera
   const $btnSort = document.getElementById('btnSort');
@@ -953,5 +1123,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
