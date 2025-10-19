@@ -87,9 +87,10 @@ th.th-desc,td.td-desc{max-width:40ch;overflow-wrap:anywhere;word-break:break-wor
 .cat-new input[type="text"] { width:11ch; }
 .cat-new input[type="color"] { width:32px; height:32px; padding:0; border:1px solid var(--bs-border-color, #e5e7eb); border-radius:6px; }
 
-/* Fixed navbar spacing */
-body { padding-top: 64px; }
-@media (max-width:576px){ body { padding-top: 84px; } }
+/* Fixed navbar spacing handled via dynamic spacer */
+body { padding-top: 0; }
+@media (max-width:576px){ body { padding-top: 0; } }
+#nav-spacer { height: 0; }
 
 /* Fila asignada (color visible) */
 .row-assigned {
@@ -141,6 +142,7 @@ body { padding-top: 64px; }
       </div>
     </div>
   </nav>
+  <div id="nav-spacer" aria-hidden="true"></div>
 
   <input id="file" type="file" accept="application/pdf" class="form-control my-2">
 
@@ -311,8 +313,19 @@ function renderCatBar(){
       lastCalc = total;
       setCheck(lastFilename || '', total);
       renderManualCatDropdown();
+      updateNavSpacer();
     });
   }
+  updateNavSpacer();
+}
+
+// Ajusta un spacer para que el contenido no quede oculto bajo la navbar fija
+function updateNavSpacer(){
+  const nav = document.querySelector('.navbar.fixed-top');
+  const sp = document.getElementById('nav-spacer');
+  if (!nav || !sp) return;
+  // Usamos offsetHeight para coger altura real incluso si hay varias filas de chips
+  sp.style.height = nav.offsetHeight + 'px';
 }
 
 // Renderiza un dropdown Bootstrap con colores para la categoría del formulario manual
@@ -1107,6 +1120,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCatBar();
   updateManualFixUI();
   renderManualCatDropdown();
+  updateNavSpacer();
+  window.addEventListener('resize', updateNavSpacer);
 
   // Botón de orden en cabecera
   const $btnSort = document.getElementById('btnSort');
