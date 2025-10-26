@@ -33,6 +33,109 @@
 .cat-dd-item { display:flex; align-items:center; gap:.5rem; width:100%; }
 .cat-dd-dot { width:12px; height:12px; border-radius:50%; border:1px solid rgba(0,0,0,.25); }
 body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.58);
+  --glass-border: rgba(255, 255, 255, 0.46);
+  --glass-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+  --surface-bg: linear-gradient(180deg, #eef2ff 0%, #f8fbff 45%, #e0e7ff 100%);
+  --safe-bottom: env(safe-area-inset-bottom, 16px);
+}
+:root[data-bs-theme="dark"] {
+  --glass-bg: rgba(15, 23, 42, 0.68);
+  --glass-border: rgba(148, 163, 184, 0.28);
+  --glass-shadow: 0 22px 50px rgba(2, 6, 23, 0.6);
+  --surface-bg: linear-gradient(180deg, #0b1220 0%, #141c2c 42%, #0a0f1c 100%);
+}
+body.bg-light {
+  background: var(--surface-bg);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+.app-shell {
+  position: relative;
+  z-index: 1;
+}
+.glass-header {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 1.5rem 1.75rem;
+  border-radius: 28px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(22px);
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
+}
+.card {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--glass-shadow);
+}
+.mercadona-logo {
+  display: block;
+  max-width: 100%;         /* no superar el ancho de la burbuja */
+  width: auto;
+  height: auto;
+  max-height: 92px;        /* adapta el alto para que no se recorte */
+  margin-inline: auto;     /* centrado horizontal */
+  filter: drop-shadow(0 12px 24px rgba(15, 23, 42, 0.2));
+}
+
+@media (max-width: 576px){
+  .mercadona-logo{
+    max-height: 72px;  /* un poco más bajo en móvil */
+  }
+}
+.glass-title {
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.68);
+}
+#progress {
+  color: rgba(15, 23, 42, 0.6);
+}
+:root[data-bs-theme="dark"] #progress {
+  color: rgba(226, 232, 240, 0.7);
+}
+:root[data-bs-theme="dark"] .glass-title {
+  color: rgba(226, 232, 240, 0.7);
+}
+.form-control,
+.form-select,
+.input-group-text {
+  border-radius: 14px;
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px);
+}
+.input-group-text {
+  background: rgba(255, 255, 255, 0.65);
+}
+:root[data-bs-theme="dark"] .form-control,
+:root[data-bs-theme="dark"] .form-select,
+:root[data-bs-theme="dark"] .input-group-text {
+  background: rgba(15, 23, 42, 0.75);
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #e2e8f0;
+}
+.btn-outline-secondary {
+  border-color: rgba(148, 163, 184, 0.45);
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px);
+}
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.72);
+}
+:root[data-bs-theme="dark"] .btn-outline-secondary {
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(15, 23, 42, 0.7);
+}
 .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 /* Chips antiguas desactivadas (ya no se usan en tabla) */
@@ -43,7 +146,19 @@ body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
 
 /* Resumen */
 .catsum-grid { display:flex; flex-wrap:wrap; gap:.5rem; }
-.catsum-grid .tag { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .6rem; border-radius:.5rem; background:#f8f9fa; border:1px solid #e9ecef; font-size:.9rem; cursor:pointer; }
+.catsum-grid .tag {
+  display:inline-flex;
+  align-items:center;
+  gap:.4rem;
+  padding:.35rem .65rem;
+  border-radius:.75rem;
+  background:rgba(255,255,255,0.68);
+  border:1px solid var(--glass-border);
+  font-size:.9rem;
+  cursor:pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
+  backdrop-filter: blur(14px);
+}
 .catsum-grid .n { font-variant-numeric: tabular-nums; }
 
 /* Marcas de precio */
@@ -57,12 +172,23 @@ a.desc-link .desc-text { text-decoration:underline; text-underline-offset:2px; }
 /* Tabla responsive */
 .table-wrap { width:100%; overflow-x:auto; }
 th.th-desc,td.td-desc{max-width:40ch;overflow-wrap:anywhere;word-break:break-word;}
-.table thead th{white-space:nowrap;position:sticky;top:0;z-index:2;background:var(--bs-tertiary-bg,#f8f9fa);}
+.table thead th{
+  white-space:nowrap;
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:rgba(255,255,255,0.72);
+  backdrop-filter:blur(14px);
+}
 
 /* Dark Mode */
-:root[data-bs-theme="dark"] body.bg-light { background:#0b0f14!important; color:#ddd; }
-:root[data-bs-theme="dark"] .table thead{background:#111827;color:#eee;}
-:root[data-bs-theme="dark"] .catsum-grid .tag{background:#12161c;border-color:#202938;}
+:root[data-bs-theme="dark"] body.bg-light { background:var(--surface-bg)!important; color:#e2e8f0; }
+:root[data-bs-theme="dark"] .table thead th{background:rgba(15,23,42,0.82);color:#e2e8f0;}
+:root[data-bs-theme="dark"] .catsum-grid .tag{
+  background:rgba(15,23,42,0.78);
+  border-color:rgba(148,163,184,0.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
 :root[data-bs-theme="dark"] a.desc-link .desc-text{color:#cbd5e1;}
 
 /* Formulario corrección manual */
@@ -75,22 +201,135 @@ th.th-desc,td.td-desc{max-width:40ch;overflow-wrap:anywhere;word-break:break-wor
 }
 .btn-del { line-height: 1; padding: .1rem .35rem; }
 
-/* Navbar categorías */
-.catbar { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
-.catbtn { display:inline-flex; align-items:center; gap:.4rem; border:1px solid var(--bs-border-color, #e5e7eb); background: var(--bs-body-bg, #fff); padding:.25rem .5rem; border-radius: 999px; cursor:pointer; }
-.cat-swatch { width:14px; height:14px; border-radius:50%; border:1px solid rgba(0,0,0,.2); display:inline-block; }
-.catbtn.active { outline:2px solid currentColor; outline-offset:2px; }
-.catbtn .name { font-size:.9rem; }
-.catbar .sep { width:1px; height:20px; background:var(--bs-border-color, #e5e7eb); margin:0 .25rem; }
-.catbar .btn-none { border-style:dashed; }
-.cat-new { display:flex; align-items:center; gap:.35rem; }
-.cat-new input[type="text"] { width:11ch; }
-.cat-new input[type="color"] { width:32px; height:32px; padding:0; border:1px solid var(--bs-border-color, #e5e7eb); border-radius:6px; }
+/* Nav inferior tipo glass */
+.glass-nav {
+  border: 0;
+  padding: 0 0 calc(1.2rem + var(--safe-bottom)) 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(226, 232, 240, 0.65));
+}
+:root[data-bs-theme="dark"] .glass-nav {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(15, 23, 42, 0.78));
+}
+.glass-nav .container {
+  display: flex;
+  justify-content: center;
+}
+.glass-nav-dock {
+  flex: 1;
+  max-width: 540px;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .65rem .85rem;
+  border-radius: 999px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(20px);
+  overflow: hidden;           /* que nada sobresalga de la burbuja */
+  position: relative;         /* contexto para el botón + si se posiciona */
+}
+.catbar-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;     /* scroll horizontal SOLO para las categorías */
+  overflow-y: visible;  /* no recortar relieves de chips */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-top: 2px;     /* holgura para sombras/relieves */
+  padding-bottom: 2px;
+  padding-right: 68px;  /* deja sitio al botón + para que nunca lo tape el scroll */
+  white-space: nowrap;  /* evita saltos de línea de los chips */
+}
+.catbar-scroll::-webkit-scrollbar { display: none; }
+.catbar {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding-right: .25rem;
+  flex-wrap: nowrap;   /* evita wraps que rompan el alto del dock */
+}
+.catbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .35rem .8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.4);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+  font-weight: 500;
+}
+.catbtn:hover { transform: translateY(-1px); }
+.catbtn.active {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+  transform: none; /* no subir: evitamos que la parte superior se 'meta' debajo del contenedor */
+}
+.catbtn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+.catbtn .name { font-size: .9rem; }
+.cat-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.6);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.05);
+}
+:root[data-bs-theme="dark"] .catbtn {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+}
+:root[data-bs-theme="dark"] .catbtn.active {
+  background: rgba(30, 41, 59, 0.95);
+  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.6);
+}
+:root[data-bs-theme="dark"] .catbtn.active { transform: none; }
+.glass-fab {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(145deg, rgba(255,255,255,0.96), rgba(255,255,255,0.7));
+  color: #0f172a;
+  font-size: 2rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center; /* asegurar centrado vertical dentro del dock */
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(18px);
+  transition: transform .2s ease, box-shadow .2s ease;
+  flex-shrink: 0;
+}
+.glass-fab span {
+  display: block;
+  line-height: 1;
+  transform: translateY(-1px); /* ajuste óptico para centrar el símbolo '+' */
+}
+.glass-fab:hover { transform: translateY(-2px); }
+.glass-fab:active { transform: scale(.95); }
+.glass-fab:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.8);
+  outline-offset: 4px;
+}
+:root[data-bs-theme="dark"] .glass-fab {
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.78));
+  color: #e2e8f0;
+}
 
-/* Fixed navbar spacing handled via dynamic spacer */
-body { padding-top: 0; }
+/* Spacer inferior controlado por JS */
+body { padding-top: 0; padding-bottom: calc(4.5rem + var(--safe-bottom)); }
 @media (max-width:576px){ body { padding-top: 0; } }
-#nav-spacer { height: 0; }
+#nav-spacer { height: calc(4.5rem + var(--safe-bottom)); }
 
 /* Fila asignada (color visible) */
 .row-assigned {
@@ -130,73 +369,40 @@ body { padding-top: 0; }
 .table.table-sm th {
   padding: .7rem .75rem; /* antes ~.5rem */
 }
-
 /* En móvil, un pelín más todavía */
 @media (max-width:576px){
   .table.table-sm td,
-  .table.table-sm th {
-    padding: .85rem .8rem;
-  }
+  .table.table-sm th { padding: .85rem .8rem; }
 }
-
-/* Que toda el área de la descripción sea clicable (no solo el texto subrayado) */
-.td-desc .desc-link {
-  display: block;
-  padding: .1rem 0; /* un poco de aire vertical extra */
-}
+/* Solo el texto de la descripción es clicable (evitar que toda la celda lance el enlace) */
+.td-desc .desc-link { display: inline; padding: 0; }
+/* Asegurar capas correctas: el modal SIEMPRE por encima del backdrop */
+.modal-backdrop { z-index: 2000 !important; }
+.modal { z-index: 2001 !important; pointer-events: auto; }
+/* Suavizar el backdrop y asegurar stacking */
+.modal-backdrop.show { opacity: .5; }
+/* Evitar que la barra inferior capture clics cuando el modal está abierto (NO desactivar app-shell) */
+.modal-open .glass-nav { pointer-events: none; }
+.modal-open .modal,
+.modal-open .modal * { pointer-events: auto; }
 </style>
 </head>
 <body class="bg-light">
-<div class="container py-3">
+<div class="app-shell container py-4 pb-5">
 
-  <!-- Navbar con título y selector de categorías -->
-  <nav class="navbar fixed-top bg-body-tertiary shadow-sm p-2">
-    <div class="container-fluid p-0">
-      <div class="d-flex flex-wrap align-items-center justify-content-between w-100 gap-2">
-        <div class="d-flex align-items-center gap-2">
-          <span class="navbar-brand mb-0 h6">Lector ticket (Mercadona)</span>
-          <small id="progress" class="text-muted"></small>
-        </div>
-        <div class="catbar" id="catBar"><!-- Render por JS --></div>
-      </div>
-    </div>
-  </nav>
-  <div id="nav-spacer" aria-hidden="true"></div>
+  <header class="glass-header text-center mb-4">
+    <img src="https://cdn.worldvectorlogo.com/logos/mercadona.svg" alt="Mercadona" class="mercadona-logo">
+    <p class="glass-title mb-0 mt-3">Lector de tickets</p>
+    <small id="progress" class="text-muted d-block mt-2"></small>
+  </header>
 
-  <!-- Modal: Editar categoría -->
-  <div class="modal fade" id="catEditModal" tabindex="-1" aria-labelledby="catEditLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="catEditLabel">Editar categoría</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <form id="catEditForm" class="row g-3">
-            <div class="col-8">
-              <label for="catEditName" class="form-label small mb-1">Nombre</label>
-              <input type="text" id="catEditName" class="form-control" maxlength="40" required>
-            </div>
-            <div class="col-4">
-              <label for="catEditColor" class="form-label small mb-1">Color</label>
-              <input type="color" id="catEditColor" class="form-control form-control-color" value="#22c55e" title="Elige color">
-            </div>
-          </form>
-          <div id="catEditHint" class="form-text">Pulsa “Guardar” para aplicar los cambios.</div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" id="catEditSave" class="btn btn-primary">Guardar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
+  <!-- Selector de archivo -->
   <input id="file" type="file" accept="application/pdf" class="form-control my-2">
 
   <div id="meta" class="small text-muted"></div>
   <div id="check" class="mb-2"></div>
 
+  <!-- Tabla -->
   <div class="table-wrap card shadow-sm">
     <table class="table table-sm align-middle mb-0" id="tbl">
       <thead>
@@ -220,6 +426,7 @@ body { padding-top: 0; }
     <button id="btnExport" class="btn btn-outline-secondary" disabled>Exportar resumen</button>
   </div>
 
+  <!-- Corrección manual -->
   <div id="manualFix" class="card mt-3 d-none">
     <div class="card-body">
       <div id="diffMsg" class="mb-2 small"></div>
@@ -236,7 +443,7 @@ body { padding-top: 0; }
           </div>
         </div>
         <div class="col-6 col-sm-3">
-          <label class="form-label small mb-1"></label>
+          <label class="form-label small mb-1">Categoría</label>
           <div id="mfCatWrap" class="dropdown w-100"></div>
           <input id="mfCatVal" type="hidden" value="">
         </div>
@@ -248,7 +455,54 @@ body { padding-top: 0; }
   </div>
 
   <div id="export-root" style="position:fixed;left:-200vw;top:0;"></div>
+  <div id="nav-spacer" aria-hidden="true"></div>
 </div>
+
+<!-- Barra inferior “liquid glass” -->
+<nav class="glass-nav fixed-bottom">
+  <div class="container">
+    <div class="glass-nav-dock">
+      <div class="catbar-scroll">
+        <div class="catbar" id="catBar"><!-- Render por JS --></div>
+      </div>
+      <button id="catAddBtn" class="glass-fab" type="button" aria-label="Nueva categoría">
+        <span aria-hidden="true">+</span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+  <!-- Modal: Crear/Editar/Eliminar categoría -->
+  <div class="modal fade" id="catEditModal" tabindex="-1" aria-labelledby="catEditLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="catEditLabel">Categoría</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <form id="catEditForm" class="row g-3">
+            <div class="col-8">
+              <label for="catEditName" class="form-label small mb-1">Nombre</label>
+              <input type="text" id="catEditName" class="form-control" maxlength="40" required>
+            </div>
+            <div class="col-4">
+              <label for="catEditColor" class="form-label small mb-1">Color</label>
+              <input type="color" id="catEditColor" class="form-control form-control-color" value="#22c55e" title="Elige color">
+            </div>
+          </form>
+          <div id="catEditHint" class="form-text">Pulsa “Guardar” para aplicar los cambios.</div>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <button type="button" id="catEditDelete" class="btn btn-outline-danger d-none">Eliminar</button>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" id="catEditSave" class="btn btn-primary">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <script>
 /* ------------ ELEMENTOS Y ESTADO ------------ */
@@ -260,6 +514,7 @@ const $check = document.getElementById('check');
 const $catsum = document.getElementById('catsum');
 const $btnExport = document.getElementById('btnExport');
 const $exportRoot = document.getElementById('export-root');
+const $catAddBtn = document.getElementById('catAddBtn');
 
 let lastCheckOk = null;
 let lastExpected = NaN;
@@ -287,7 +542,9 @@ let activeCategoryId = null;
 
 // Estado edición de categoría
 let catEditId = null;
+let catEditMode = 'edit';
 let catEditModal = null;
+
 function getCategoryById(id){ return categories.find(c => c.id === id); }
 function slugifyName(name){
   return String(name || '')
@@ -296,7 +553,6 @@ function slugifyName(name){
     .replace(/\s+/g,'-').replace(/[^a-z0-9-]/gi,'')
     .slice(0, 40);
 }
-
 function hexToRGBA(hex, alpha=0.2){
   hex = String(hex||'').trim();
   const m = hex.match(/^#?([0-9a-f]{6})$/i);
@@ -332,103 +588,142 @@ function setActiveCategory(id){
   saveCategories();
   renderCatBar();
 }
+
+/* ---------- Footer spacer dinámico ---------- */
+function updateNavSpacer(){
+  const nav = document.querySelector('.glass-nav.fixed-bottom');
+  const sp = document.getElementById('nav-spacer');
+  if (!nav || !sp) return;
+  const rootStyles = getComputedStyle(document.documentElement);
+  const safeRaw = rootStyles.getPropertyValue('--safe-bottom') || '16';
+  const safe = parseFloat(safeRaw) || 16;
+  const extra = Math.max(12, safe * 0.5);
+  const h = nav.offsetHeight + extra;
+  sp.style.height = h + 'px';
+  document.body.style.paddingBottom = h + 'px';
+}
+
+/* ---------- Render footer categorías ---------- */
 function renderCatBar(){
   const bar = document.getElementById('catBar');
   if (!bar) return;
-  const btn = (c) => `
+  if (!categories.length){
+    bar.innerHTML = `<span class="text-muted small">Añade categorías con el botón “+”.</span>`;
+    updateNavSpacer();
+    return;
+  }
+  const htmlCats = categories.map((c) => `
     <button type="button" class="catbtn ${activeCategoryId===c.id?'active':''}" data-cat-id="${c.id}" style="color:${c.color}">
       <span class="cat-swatch" style="background:${c.color}"></span>
       <span class="name">${escapeHtml(c.name)}</span>
-    </button>`;
-  const htmlCats = categories.map(btn).join('');
-  const newForm = `
-    <span class="sep"></span>
-    <div class="cat-new" id="catNew">
-      <input id="newCatName" type="text" class="form-control form-control-sm" placeholder="Nombre">
-      <input id="newCatColor" type="color" value="#22c55e" aria-label="Color">
-      <button id="newCatAdd" type="button" class="btn btn-sm btn-success">+</button>
-    </div>`;
-  bar.innerHTML = htmlCats + newForm;
+    </button>`).join('');
+  bar.innerHTML = htmlCats;
 
-  bar.querySelectorAll('.catbtn').forEach(b=>{
+  bar.querySelectorAll('.catbtn').forEach((b)=>{
     b.addEventListener('click', ()=>{
       const id = b.getAttribute('data-cat-id');
       if (!id) return;
       if (id === activeCategoryId) {
-        openCategoryEditor(id); // re-click sobre la activa -> editar
+        openCategoryEditor(id, 'edit');
       } else {
         setActiveCategory(id);
       }
     });
   });
-// Abrir modal de edición para la categoría activa (o id dado)
-function openCategoryEditor(id){
-  const cid = id || activeCategoryId;
-  const cat = getCategoryById(cid);
-  if (!cat) return;
-  catEditId = cid;
-
-  // Prefill
-  const $name = document.getElementById('catEditName');
-  const $color = document.getElementById('catEditColor');
-  if ($name) $name.value = cat.name || '';
-  if ($color) $color.value = /^#[0-9a-f]{6}$/i.test(cat.color||'') ? cat.color : '#22c55e';
-
-  // Show modal
-  if (!catEditModal){
-    const $modal = document.getElementById('catEditModal');
-    catEditModal = new bootstrap.Modal($modal);
-  }
-  catEditModal.show();
+  updateNavSpacer();
 }
 
-// Guardar cambios de edición
-function saveCategoryEditor(){
-  if (!catEditId) return;
+/* ---------- Editor categoría ---------- */
+function openCategoryEditor(id, mode='edit'){
+  const isCreate = mode === 'create';
+  catEditMode = isCreate ? 'create' : 'edit';
+  catEditId = isCreate ? null : (id || activeCategoryId);
+  const cat = isCreate ? null : getCategoryById(catEditId);
+  if (!isCreate && !cat) return;
+
   const $name = document.getElementById('catEditName');
   const $color = document.getElementById('catEditColor');
+  const $title = document.getElementById('catEditLabel');
+  const $hint = document.getElementById('catEditHint');
+  const $save = document.getElementById('catEditSave');
+
+  if ($name) $name.value = isCreate ? '' : (cat.name || '');
+  if ($color) $color.value = isCreate
+    ? '#22c55e'
+    : (/^#[0-9a-f]{6}$/i.test(cat?.color || '') ? cat.color : '#22c55e');
+
+  if ($title) $title.textContent = isCreate ? 'Nueva categoría' : 'Editar categoría';
+  if ($hint) $hint.textContent = isCreate
+    ? 'Pulsa “Crear” para añadir la nueva categoría.'
+    : 'Pulsa “Guardar” para aplicar los cambios.';
+  if ($save) $save.textContent = isCreate ? 'Crear' : 'Guardar';
+
+  updateCatEditDeleteBtn();
+
+  if (!catEditModal){
+    const $modal = document.getElementById('catEditModal');
+    catEditModal = new bootstrap.Modal($modal, { backdrop: true, focus: true, keyboard: true });
+  }
+  catEditModal.show();
+  // Enfocar el campo nombre tras abrir (evita quedarse "bloqueado" por falta de foco)
+  setTimeout(()=>{ try{ document.getElementById('catEditName')?.focus(); }catch(e){} }, 50);
+}
+
+function updateCatEditDeleteBtn(){
+  const delBtn = document.getElementById('catEditDelete');
+  if (!delBtn) return;
+  const isCreate = (catEditMode === 'create');
+  // Ocultar en modo crear o si quedarían menos de 2 categorías tras borrar
+  if (isCreate || categories.length <= 2){
+    delBtn.classList.add('d-none');
+    return;
+  }
+  delBtn.classList.remove('d-none');
+}
+
+function saveCategoryEditor(){
+  const $name = document.getElementById('catEditName');
+  const $color = document.getElementById('catEditColor');
+  if (!$name || !$color) return;
+
   const newName = String($name.value || '').trim();
   const newColor = String($color.value || '').trim();
 
   if (!newName){ alert('Pon un nombre.'); return; }
   if (!/^#[0-9a-f]{6}$/i.test(newColor)){ alert('Color inválido.'); return; }
 
-  const cat = getCategoryById(catEditId);
-  if (!cat) return;
+  if (catEditMode === 'create'){
+    const baseId = slugifyName(newName) || ('cat-' + Date.now().toString(36));
+    let unique = baseId, k = 2;
+    while (categories.some(c => c.id === unique)) unique = `${baseId}-${k++}`;
+    const newCat = { id: unique, name: newName, color: newColor, locked: false };
+    categories.push(newCat);
+    activeCategoryId = newCat.id;
+  } else {
+    if (!catEditId) return;
+    const cat = getCategoryById(catEditId);
+    if (!cat) return;
 
-  // Mantener id si es locked; si no, permitir cambiar slug si cambia el nombre
-  const oldId = cat.id;
-  cat.name = newName;
-  cat.color = newColor;
+    const oldId = cat.id;
+    cat.name = newName;
+    cat.color = newColor;
 
-  // Si no es bloqueada y el nombre cambia, recalcular id respetando colisiones
-  if (!cat.locked){
+    // Permitimos renombrar incluso si era "locked"
     const proposed = slugifyName(newName) || oldId;
     if (proposed !== oldId){
-      let unique = proposed;
-      let k = 2;
-      while (categories.some(c => c.id === unique && c !== cat)){
-        unique = proposed + '-' + (k++);
-      }
-      // Propagar cambio de id en los mapas asignados
+      let unique = proposed, k=2;
+      while (categories.some(c => c.id === unique && c !== cat)) unique = proposed + '-' + (k++);
       if (unique !== oldId){
-        // Cambiar id en la categoría
         cat.id = unique;
-        // Remapear categoryMap (key -> catId)
-        const entries = Array.from(categoryMap.entries());
-        for (const [kkey, cid] of entries){
-          if (cid === oldId) {
-            categoryMap.set(kkey, unique);
-          }
+        for (const [kkey, cid] of Array.from(categoryMap.entries())){
+          if (cid === oldId) categoryMap.set(kkey, unique);
         }
-        // Actualizar selección activa si procede
         if (activeCategoryId === oldId) activeCategoryId = unique;
       }
     }
   }
 
   saveCategories();
-  // Re-render: navbar, tabla (para recolorear), resumen, dropdown manual y spacer
   renderCatBar();
   const total = setTable(baseItems);
   lastCalc = total;
@@ -438,86 +733,58 @@ function saveCategoryEditor(){
 
   if (catEditModal) catEditModal.hide();
   catEditId = null;
+  catEditMode = 'edit';
 }
-// Guardar desde el modal
-document.addEventListener('click', (ev)=>{
-  const btn = ev.target.closest('#catEditSave');
-  if (!btn) return;
-  saveCategoryEditor();
-});
-  const addBtn = bar.querySelector('#newCatAdd');
-  if (addBtn){
-    addBtn.addEventListener('click', ()=>{
-      const name = String(bar.querySelector('#newCatName').value||'').trim();
-      const color = String(bar.querySelector('#newCatColor').value||'').trim();
-      if (!name){ alert('Pon un nombre para la categoría'); return; }
-      const id = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
-      if (!/^#[0-9a-f]{6}$/i.test(color)){ alert('Color inválido'); return; }
-      if (categories.some(c=>c.id===id)){ alert('Ya existe una categoría con ese nombre'); return; }
-      categories.push({id, name, color, locked:false});
-      setActiveCategory(id);
-      saveCategories();
-      const total = setTable(baseItems);
-      lastCalc = total;
-      setCheck(lastFilename || '', total);
-      renderManualCatDropdown();
-      updateNavSpacer();
-    });
+
+function deleteCategoryEditor(){
+  if (!catEditId) return;
+  const cat = getCategoryById(catEditId);
+  if (!cat) return;
+
+  // Regla: no permitir que queden menos de 2 categorías
+  if (categories.length <= 2){
+    alert('Debe haber al menos 2 categorías. No se puede eliminar más.');
+    return;
   }
+
+  const used = Array.from(categoryMap.values()).some(v => v === cat.id);
+  const msg = used
+    ? `La categoría "${cat.name}" está asignada a algunas filas.\nSe eliminarán esas asignaciones. ¿Seguro que quieres eliminarla?`
+    : `¿Eliminar la categoría "${cat.name}"?`;
+  if (!confirm(msg)) return;
+
+  // Eliminar asignaciones a esta categoría
+  for (const [k, v] of Array.from(categoryMap.entries())){
+    if (v === cat.id) categoryMap.delete(k);
+  }
+  // Quitar de la lista de categorías (incluye originales si toca)
+  categories = categories.filter(c => c.id !== cat.id);
+
+  // Ajustar activa
+  if (activeCategoryId === cat.id){
+    activeCategoryId = categories[0] ? categories[0].id : null;
+  }
+
+  saveCategories();
+  renderCatBar();
+  const total = setTable(baseItems);
+  lastCalc = total;
+  setCheck(lastFilename || '', total);
+  renderManualCatDropdown();
   updateNavSpacer();
+
+  if (catEditModal) catEditModal.hide();
+  catEditId = null;
+  catEditMode = 'edit';
 }
 
-// Ajusta un spacer para que el contenido no quede oculto bajo la navbar fija
-function updateNavSpacer(){
-  const nav = document.querySelector('.navbar.fixed-top');
-  const sp = document.getElementById('nav-spacer');
-  if (!nav || !sp) return;
-  // Usamos offsetHeight para coger altura real incluso si hay varias filas de chips
-  sp.style.height = nav.offsetHeight + 'px';
-}
-
-// Renderiza un dropdown Bootstrap con colores para la categoría del formulario manual
-function renderManualCatDropdown(){
-  const wrap = document.getElementById('mfCatWrap');
-  const hidden = document.getElementById('mfCatVal');
-  if (!wrap || !hidden) return;
-
-  const def = activeCategoryId || (categories[0] && categories[0].id) || '';
-  const defObj = categories.find(c => c.id === def) || categories[0] || {id:'', name:'', color:'#888'};
-  hidden.value = defObj.id;
-
-  wrap.innerHTML = `
-    <button class="btn btn-outline-secondary dropdown-toggle cat-dd-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-      <span class="cat-dd-label">
-        <span class="cat-dd-dot" style="background:${defObj.color}"></span>
-        <span class="cat-dd-name">${escapeHtml(defObj.name)}</span>
-      </span>
-    </button>
-    <ul class="dropdown-menu w-100">
-      ${categories.map(c => `
-        <li>
-          <button type="button" class="dropdown-item cat-dd-item" data-id="${c.id}" data-color="${c.color}">
-            <span class="cat-dd-dot" style="background:${c.color}"></span>
-            <span>${escapeHtml(c.name)}</span>
-          </button>
-        </li>
-      `).join('')}
-    </ul>
-  `;
-
-  wrap.querySelectorAll('.cat-dd-item').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const id = btn.getAttribute('data-id');
-      const color = btn.getAttribute('data-color');
-      const name = btn.textContent.trim();
-      hidden.value = id;
-      const lab = wrap.querySelector('.cat-dd-name');
-      const dot = wrap.querySelector('.cat-dd-dot');
-      if (lab) lab.textContent = name;
-      if (dot) dot.style.background = color;
-    });
-  });
-}
+// Guardar / Eliminar desde el modal
+document.addEventListener('click', (ev)=>{
+  const saveBtn = ev.target.closest('#catEditSave');
+  if (saveBtn){ saveCategoryEditor(); return; }
+  const delBtn = ev.target.closest('#catEditDelete');
+  if (delBtn){ deleteCategoryEditor(); return; }
+});
 
 /* ------------ NUMÉRICO / FORMATO ------------ */
 const toNumberEUR = (s) => {
@@ -780,7 +1047,6 @@ async function exportCategoryImages() {
     const msg = `⚠️ El total calculado (${toEUR(lastCalc)}) NO coincide con el del archivo (${toEUR(lastExpected)}).\n\n¿Quieres exportar igualmente?`;
     if (!confirm(msg)) return;
   }
-  // Construir map dinámico por categoría
   const byCat = {};
   for (const c of categories) byCat[c.id] = [];
   for (const tr of document.querySelectorAll('#tbl tbody tr[data-key]')) {
@@ -835,7 +1101,7 @@ async function exportCategoryImages() {
   wrapper.remove();
 }
 
-/* ------------ PICKER AUTO / ESTADO EXPORT ------------ */
+/* ------------ ESTADO EXPORT & ENLACE DESC ------------ */
 function updateExportButtonState() {
   const rows = Array.from(document.querySelectorAll('#tbl tbody tr[data-key]'));
   if (rows.length === 0) {
@@ -855,11 +1121,21 @@ function updateExportButtonState() {
     : 'Asigna categoría a todas las filas para exportar';
 }
 
+// Evitar que el clic en el enlace de la descripción asigne categoría
+document.getElementById('tbl').addEventListener('click', (ev) => {
+  const a = ev.target.closest('.td-desc a.desc-link');
+  if (a){
+    ev.stopPropagation(); // deja que el enlace funcione sin asignar fila
+    return;
+  }
+}, true);
+
 /* ------------ CLIC EN FILA (asignación) ------------ */
 document.getElementById('tbl').addEventListener('click', (ev) => {
   const tr = ev.target.closest('tr[data-key]');
   if (!tr) return;
   if (ev.target.closest('.btn-del')) return;
+  if (ev.target.closest('a.desc-link')) return;
   const key = tr.getAttribute('data-key');
   if (!key) return;
 
@@ -885,7 +1161,7 @@ document.getElementById('tbl').addEventListener('dblclick', (ev) => {
   setCheck(lastFilename || '', total);
 });
 
-// Eliminar línea manual con botón ✖
+// Eliminar línea manual
 document.getElementById('tbl').addEventListener('click', (ev) => {
   const del = ev.target.closest('.btn-del');
   if (!del) return;
@@ -1190,6 +1466,49 @@ function updateManualFixUI(){
   }
 }
 
+/* ------------ Dropdown manual con colores ------------ */
+function renderManualCatDropdown(){
+  const wrap = document.getElementById('mfCatWrap');
+  const hidden = document.getElementById('mfCatVal');
+  if (!wrap || !hidden) return;
+
+  const def = activeCategoryId || (categories[0] && categories[0].id) || '';
+  const defObj = categories.find(c => c.id === def) || categories[0] || {id:'', name:'', color:'#888'};
+  hidden.value = defObj.id;
+
+  wrap.innerHTML = `
+    <button class="btn btn-outline-secondary dropdown-toggle cat-dd-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+      <span class="cat-dd-label">
+        <span class="cat-dd-dot" style="background:${defObj.color}"></span>
+        <span class="cat-dd-name">${escapeHtml(defObj.name)}</span>
+      </span>
+    </button>
+    <ul class="dropdown-menu w-100">
+      ${categories.map(c => `
+        <li>
+          <button type="button" class="dropdown-item cat-dd-item" data-id="${c.id}" data-color="${c.color}">
+            <span class="cat-dd-dot" style="background:${c.color}"></span>
+            <span>${escapeHtml(c.name)}</span>
+          </button>
+        </li>
+      `).join('')}
+    </ul>
+  `;
+
+  wrap.querySelectorAll('.cat-dd-item').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-id');
+      const color = btn.getAttribute('data-color');
+      const name = btn.textContent.trim();
+      hidden.value = id;
+      const lab = wrap.querySelector('.cat-dd-name');
+      const dot = wrap.querySelector('.cat-dd-dot');
+      if (lab) lab.textContent = name;
+      if (dot) dot.style.background = color;
+    });
+  });
+}
+
 /* ------------ EVENTOS ------------ */
 $file.addEventListener('change', processSelectedFile);
 
@@ -1249,7 +1568,7 @@ document.getElementById('manualForm').addEventListener('submit', (ev) => {
 // Export
 $btnExport.addEventListener('click', exportCategoryImages);
 
-// Auto-abrir picker + inicializar categorías y botón de orden
+// Auto-abrir picker + inicializar
 document.addEventListener('DOMContentLoaded', () => {
   const openPicker = () => {
     try {
@@ -1270,6 +1589,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderManualCatDropdown();
   updateNavSpacer();
   window.addEventListener('resize', updateNavSpacer);
+
+  if ($catAddBtn) $catAddBtn.addEventListener('click', () => openCategoryEditor(null, 'create'));
 
   // Botón de orden en cabecera
   const $btnSort = document.getElementById('btnSort');
