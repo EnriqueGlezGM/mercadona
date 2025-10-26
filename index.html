@@ -1091,13 +1091,23 @@ async function exportCategoryImages() {
   $exportRoot.appendChild(wrapper);
   const canvas = await html2canvas(wrapper, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
   const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'listas_categorias.png';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(a.href);
+  const url = URL.createObjectURL(blob);
+  // Abrir una nueva pestaña con la imagen generada
+  const win = window.open();
+  if (win) {
+    const img = new Image();
+    img.src = url;
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    img.style.display = 'block';
+    img.style.margin = '0 auto';
+    win.document.title = 'Resumen de categorías';
+    win.document.body.style.margin = '0';
+    win.document.body.style.background = '#fff';
+    win.document.body.appendChild(img);
+  } else {
+    alert('El navegador bloqueó la ventana emergente. Permite pop-ups para ver la imagen.');
+  }
   wrapper.remove();
 }
 
