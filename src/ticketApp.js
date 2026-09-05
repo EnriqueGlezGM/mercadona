@@ -47,7 +47,7 @@ export function initTicketApp() {
 
   document.body.classList.add('bg-light');
 
-  /* ------------ ELEMENTOS Y ESTADO ------------ */
+  /* ------------ ELEMENTOS Y ESTADO ------------- */
   const $file = document.getElementById('file');
   const $tblEl = document.getElementById('tbl');
   const $progress = document.getElementById('progress');
