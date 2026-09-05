@@ -1,5 +1,6 @@
 import { Modal } from 'bootstrap';
 import { detectStore, extractTicketTotal, filterProductsSection, parseProducts } from './ticketParser';
+import { buildCategoryExportData } from './exportData';
 
 let initialized = false;
 let pdfJsLoadPromise = null;
@@ -1210,19 +1211,7 @@ export function initTicketApp() {
       const msg = `⚠️ El total calculado (${toEUR(lastCalc)}) NO coincide con el del archivo (${toEUR(lastExpected)}).\n\n¿Quieres exportar igualmente?`;
       if (!confirm(msg)) return;
     }
-    const byCat = {};
-    for (const c of categories) byCat[c.id] = [];
-    for (const [key, allocs] of allocationMap.entries()) {
-      const it = itemsByKey.get(key);
-      if (!it) continue;
-      const amount = Number(it.amount) || 0;
-      for (const alloc of allocs){
-        if (!byCat[alloc.id]) continue;
-        const partAmt = amount * (Number(alloc.pct) || 0) / 100;
-        if (!isFinite(partAmt) || partAmt <= 0) continue;
-        byCat[alloc.id].push({ ...it, amount: partAmt, pct: alloc.pct });
-      }
-    }
+    const byCat = buildCategoryExportData(categories, allocationMap, itemsByKey);
     const wrapper = document.createElement('div');
     wrapper.style.width = '980px';
     wrapper.style.background = '#fff';
