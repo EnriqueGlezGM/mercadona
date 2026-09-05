@@ -79,7 +79,7 @@ export default function App() {
 
         <div className="d-grid mt-2">
           <button id="btnExport" className="btn btn-outline-secondary" disabled>
-            Exportar resumen
+            Exportar
           </button>
         </div>
 
