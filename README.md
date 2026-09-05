@@ -83,6 +83,9 @@ Si hay productos sin categoría, antes de exportar la app muestra un aviso con o
 
 ## Deploy en GitHub Pages
 
+> [!IMPORTANT]
+> No es necesario realizar el deploy manualmente. La GitHub Action incluida en el repositorio ejecuta las pruebas, genera el build y publica la aplicación automáticamente cada vez que se envía un nuevo commit a `main`. El procedimiento manual que aparece más abajo queda disponible únicamente como alternativa.
+
 El deploy se ejecuta automáticamente con GitHub Actions cada vez que hay un nuevo commit en `main`. El workflow genera el build y publica la carpeta `dist` en la rama `gh-pages`.
 
 En GitHub, ve a **Settings → Pages** y selecciona:
