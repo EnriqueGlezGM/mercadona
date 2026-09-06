@@ -265,6 +265,25 @@ export default function App() {
         </div>
       </div>
 
+      <div className="modal fade" id="exportPreviewModal" tabIndex={-1} aria-labelledby="exportPreviewLabel" aria-hidden="true">
+        <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title" id="exportPreviewLabel">Resumen exportado</h5>
+              <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div className="modal-body export-preview-body">
+              <img id="exportPreviewImage" alt="Vista previa del resumen por categorías" />
+            </div>
+            <div className="modal-footer">
+              <button id="exportPreviewSave" type="button" className="btn btn-primary">
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="modal fade" id="rowEditModal" tabIndex={-1} aria-labelledby="rowEditLabel" aria-hidden="true">
         <div className="modal-dialog">
           <div className="modal-content">

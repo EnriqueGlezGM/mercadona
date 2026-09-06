@@ -77,7 +77,7 @@ Si hay productos sin categoría, antes de exportar la app muestra un aviso con o
    ```
 2. Ejecuta el servidor de desarrollo:
    ```bash
-   npm run dev
+   npm run dev -- --host 0.0.0.0 --port 5173
    ```
 
 

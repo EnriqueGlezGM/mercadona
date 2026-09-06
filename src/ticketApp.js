@@ -105,6 +105,9 @@ export function initTicketApp() {
   let splitEditKey = null;
   let splitModal = null;
   let exportMissingModal = null;
+  let exportPreviewModal = null;
+  let exportPreviewUrl = '';
+  let exportPreviewBlob = null;
   let splitReturnToRowEdit = false;
   let rowEditKey = null;
   let rowEditModal = null;
@@ -1280,6 +1283,72 @@ export function initTicketApp() {
     }
     return wrap;
   }
+  function clearExportPreview() {
+    const image = document.getElementById('exportPreviewImage');
+    if (image) image.removeAttribute('src');
+    if (exportPreviewUrl) {
+      URL.revokeObjectURL(exportPreviewUrl);
+      exportPreviewUrl = '';
+    }
+    exportPreviewBlob = null;
+  }
+  function canShareExportPreview(blob) {
+    if (!blob || typeof File !== 'function' || typeof navigator.share !== 'function') return false;
+    try {
+      const file = new File([blob], 'resumen-categorias.png', { type: 'image/png' });
+      return typeof navigator.canShare !== 'function' || navigator.canShare({ files: [file] });
+    } catch {
+      return false;
+    }
+  }
+  function downloadExportPreview() {
+    if (!exportPreviewUrl) return;
+    const link = document.createElement('a');
+    link.href = exportPreviewUrl;
+    link.download = 'resumen-categorias.png';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+  async function saveExportPreview() {
+    if (!exportPreviewBlob) return;
+    if (canShareExportPreview(exportPreviewBlob)) {
+      try {
+        const file = new File([exportPreviewBlob], 'resumen-categorias.png', { type: 'image/png' });
+        await navigator.share({
+          files: [file],
+          title: 'Resumen por categorías',
+        });
+        return;
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+      }
+    }
+    downloadExportPreview();
+  }
+  function showExportPreview(blob) {
+    const modalElement = document.getElementById('exportPreviewModal');
+    const image = document.getElementById('exportPreviewImage');
+    const saveButton = document.getElementById('exportPreviewSave');
+    if (!modalElement || !image || !saveButton || !blob) {
+      alert('No se pudo mostrar la vista previa de la imagen.');
+      return;
+    }
+    if (!exportPreviewModal) {
+      exportPreviewModal = new Modal(modalElement, { backdrop: true, focus: true, keyboard: true });
+      modalElement.addEventListener('hidden.bs.modal', clearExportPreview);
+      saveButton.addEventListener('click', saveExportPreview);
+    }
+    clearExportPreview();
+    exportPreviewBlob = blob;
+    exportPreviewUrl = URL.createObjectURL(blob);
+    image.src = exportPreviewUrl;
+    const canSave = canShareExportPreview(blob);
+    saveButton.textContent = canSave ? 'Guardar' : 'Descargar';
+    saveButton.disabled = false;
+    saveButton.title = canSave ? 'Guardar o compartir en el dispositivo' : 'Descargar imagen';
+    exportPreviewModal.show();
+  }
   async function exportCategoryImages() {
     const html2canvas = await loadHtml2canvas();
     if (!html2canvas) { alert('No se pudo cargar html2canvas.'); return; }
@@ -1325,37 +1394,12 @@ export function initTicketApp() {
     }
     if (!added) { alert('No hay categorías con elementos para exportar.'); return; }
 
-    let url = '';
     try {
       $exportRoot.appendChild(wrapper);
       const canvas = await html2canvas(wrapper, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
       const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-      url = URL.createObjectURL(blob);
-      const win = window.open();
-      if (win) {
-        const objectUrl = url;
-        const img = new Image();
-        img.onload = () => {
-          URL.revokeObjectURL(objectUrl);
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(objectUrl);
-        };
-        img.src = objectUrl;
-        img.style.maxWidth = '100%';
-        img.style.height = 'auto';
-        img.style.display = 'block';
-        img.style.margin = '0 auto';
-        url = '';
-        win.document.title = 'Resumen de categorías';
-        win.document.body.style.margin = '0';
-        win.document.body.style.background = '#fff';
-        win.document.body.appendChild(img);
-      } else {
-        alert('El navegador bloqueó la ventana emergente. Permite pop-ups para ver la imagen.');
-      }
+      showExportPreview(blob);
     } finally {
-      if (url) URL.revokeObjectURL(url);
       wrapper.remove();
     }
   }

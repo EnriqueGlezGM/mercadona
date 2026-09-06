@@ -616,6 +616,21 @@ body { padding-top: 0; padding-bottom: calc(4.5rem + var(--safe-bottom)); }
 .export-card .right { text-align: right; font-variant-numeric: tabular-nums; }
 .export-card .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .export-card .total { font-weight: 700; }
+.export-preview-body {
+  display:flex;
+  justify-content:center;
+  padding:1rem;
+  background:#eef1f5;
+}
+.export-preview-body img {
+  display:block;
+  width:100%;
+  height:auto;
+  max-height:72vh;
+  object-fit:contain;
+  background:#fff;
+  box-shadow:0 .35rem 1.25rem rgba(15,23,42,.16);
+}
 /* keep export root offscreen */
 #export-root { position: fixed; left: -200vw; top: 0; }
 /* Aumentar ligeramente el área táctil de las celdas (desktop) */
