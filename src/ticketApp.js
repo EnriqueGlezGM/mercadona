@@ -2252,4 +2252,51 @@ export function initTicketApp() {
         setCheck(lastFilename || '', total);
       });
     }
+
+    const modelContext = document.modelContext;
+    if (modelContext?.registerTool) {
+      const register = (tool) => {
+        try {
+          void Promise.resolve(modelContext.registerTool(tool)).catch(() => {});
+        } catch {
+          // WebMCP is progressive enhancement; the visible app remains complete.
+        }
+      };
+
+      register({
+        name: 'list_ticket_categories',
+        title: 'Listar categorías del ticket',
+        description: 'Devuelve las categorías disponibles y cuál está activa en el lector de tickets.',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+        annotations: { readOnlyHint: true, untrustedContentHint: false },
+        execute() {
+          return {
+            categories: categories.map(({ id, name, color }) => ({ id, name, color })),
+            activeCategoryId,
+          };
+        },
+      });
+
+      register({
+        name: 'select_ticket_category',
+        title: 'Seleccionar categoría del ticket',
+        description: 'Activa una categoría existente para asignar después productos desde la tabla visible.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            categoryId: { type: 'string', description: 'Identificador exacto de la categoría.' },
+          },
+          required: ['categoryId'],
+          additionalProperties: false,
+        },
+        annotations: { readOnlyHint: false, untrustedContentHint: false },
+        execute(input) {
+          const categoryId = String(input?.categoryId || '');
+          const category = getCategoryById(categoryId);
+          if (!category) throw new Error('La categoría indicada no existe.');
+          setActiveCategory(categoryId);
+          return { selected: true, category: { id: category.id, name: category.name } };
+        },
+      });
+    }
 }
