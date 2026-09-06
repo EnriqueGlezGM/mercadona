@@ -13,7 +13,7 @@ export default function App() {
         <header className="glass-header text-center mb-4">
           <div className="store-logos">
             <img
-              src="https://www.freelogovectors.net/wp-content/uploads/2023/10/mercadonalogo-freelogovectors.net_.png"
+              src="./mercadona-logo.png"
               alt="Mercadona"
               className="store-logo mercadona-logo"
             />
