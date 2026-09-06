@@ -6,7 +6,7 @@ Demo: [Lector](https://enriqueglezgm.github.io/Supermercado/)
 
 ## Propósito
 
-La idea es partir del ticket digital que ya dan supermercados como Mercadona o Lidl y convertirlo en un desglose rápido de quién paga qué.
+La idea es partir del ticket digital que ya dan supermercados como Mercadona o Lidl y convertirlo en un desglose rápido de quién paga qué
 
 En una compra compartida, cada línea del ticket se asigna a una categoría. Lo normal es que esas categorías sean personas, pero también pueden ser grupos, cuentas o conceptos de gasto. Por ejemplo, `Alberto` y `Kike` pueden ser personas, mientras que `Común` puede representar una parte compartida entre ambos.
 
