@@ -165,10 +165,33 @@ export default function App() {
                   />
                 </div>
                 <div className="col-12">
+                  <div className="category-options-heading">
+                    <span>Opciones</span>
+                    <details className="category-options-help">
+                      <summary title="Información sobre las opciones" aria-label="Información sobre las opciones">
+                        i
+                      </summary>
+                      <div className="category-options-help-panel">
+                        <p><strong>No recibir repartos %:</strong> no puede elegirse al dividir un producto por porcentajes.</p>
+                        <p><strong>Repartir total:</strong> divide su total a partes iguales y lo añade a las demás categorías.</p>
+                        <p><strong>Ocultar productos:</strong> en la exportación muestra únicamente el número de productos y los totales.</p>
+                      </div>
+                    </details>
+                  </div>
+                </div>
+                <div className="col-12">
                   <div className="form-check">
                     <input className="form-check-input" type="checkbox" id="catEditNoSplit" />
                     <label className="form-check-label" htmlFor="catEditNoSplit">
-                      Excluir de reparto %
+                      No recibir repartos %
+                    </label>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="form-check">
+                    <input className="form-check-input" type="checkbox" id="catEditDistributesTotal" />
+                    <label className="form-check-label" htmlFor="catEditDistributesTotal">
+                      Repartir total entre las demás
                     </label>
                   </div>
                 </div>
@@ -176,7 +199,7 @@ export default function App() {
                   <div className="form-check">
                     <input className="form-check-input" type="checkbox" id="catEditMask" />
                     <label className="form-check-label" htmlFor="catEditMask">
-                      Enmascarar productos en el resumen
+                      Ocultar productos al exportar
                     </label>
                   </div>
                 </div>

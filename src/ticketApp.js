@@ -1,6 +1,6 @@
 import { Modal } from 'bootstrap';
 import { detectStore, extractTicketTotal, filterProductsSection, parseProducts } from './ticketParser';
-import { buildCategoryExportData } from './exportData';
+import { buildCategoryExportData, calculateCategoryTotals } from './exportData';
 
 let initialized = false;
 let pdfJsLoadPromise = null;
@@ -130,7 +130,7 @@ export function initTicketApp() {
     return [
     {id:'alberto', name:'Alberto', color:'#dc3545', locked:true},
     {id:'kike',    name:'Kike',    color:'#0d6efd', locked:true},
-    {id:'comun',   name:'Común',   color:'#ffc107', locked:true, noSplit:true}
+    {id:'comun',   name:'Común',   color:'#ffc107', locked:true, noSplit:true, distributesTotal:true}
     ];
   }
   function normalizeStoredCategories(value){
@@ -154,6 +154,9 @@ export function initTicketApp() {
         color,
         locked: !!raw.locked,
         noSplit: !!raw.noSplit,
+        distributesTotal: raw.distributesTotal === undefined
+          ? id === 'comun'
+          : !!raw.distributesTotal,
         masked: !!raw.masked
       });
     }
@@ -329,6 +332,7 @@ export function initTicketApp() {
     const $name = document.getElementById('catEditName');
     const $color = document.getElementById('catEditColor');
     const $noSplit = document.getElementById('catEditNoSplit');
+    const $distributesTotal = document.getElementById('catEditDistributesTotal');
     const $mask = document.getElementById('catEditMask');
     const $title = document.getElementById('catEditLabel');
     const $save = document.getElementById('catEditSave');
@@ -338,6 +342,7 @@ export function initTicketApp() {
       ? '#22c55e'
       : (/^#[0-9a-f]{6}$/i.test(cat?.color || '') ? cat.color : '#22c55e');
     if ($noSplit) $noSplit.checked = isCreate ? false : !!cat.noSplit;
+    if ($distributesTotal) $distributesTotal.checked = isCreate ? false : !!cat.distributesTotal;
     if ($mask) $mask.checked = isCreate ? false : !!cat.masked;
 
     if ($title) $title.textContent = isCreate ? 'Nueva categoría' : 'Editar categoría';
@@ -370,6 +375,7 @@ export function initTicketApp() {
     const $name = document.getElementById('catEditName');
     const $color = document.getElementById('catEditColor');
     const $noSplit = document.getElementById('catEditNoSplit');
+    const $distributesTotal = document.getElementById('catEditDistributesTotal');
     const $mask = document.getElementById('catEditMask');
     if (!$name || !$color) return;
 
@@ -378,6 +384,15 @@ export function initTicketApp() {
 
     if (!newName){ alert('Pon un nombre.'); return; }
     if (!/^#[0-9a-f]{6}$/i.test(newColor)){ alert('Color inválido.'); return; }
+    if ($distributesTotal?.checked) {
+      const recipientCountAfterSave = categories.filter((category) =>
+        category.id !== catEditId && !category.distributesTotal
+      ).length;
+      if (!recipientCountAfterSave) {
+        alert('Debe quedar al menos una categoría normal que reciba el reparto.');
+        return;
+      }
+    }
 
     if (catEditMode === 'create'){
       const baseId = slugifyName(newName) || ('cat-' + Date.now().toString(36));
@@ -389,6 +404,7 @@ export function initTicketApp() {
         color: newColor,
         locked: false,
         noSplit: !!$noSplit?.checked,
+        distributesTotal: !!$distributesTotal?.checked,
         masked: !!$mask?.checked
       };
       categories.push(newCat);
@@ -402,6 +418,7 @@ export function initTicketApp() {
       cat.name = newName;
       cat.color = newColor;
       cat.noSplit = !!$noSplit?.checked;
+      cat.distributesTotal = !!$distributesTotal?.checked;
       cat.masked = !!$mask?.checked;
 
       // Permitimos renombrar incluso si era "locked"
@@ -438,6 +455,12 @@ export function initTicketApp() {
     // Regla: no permitir que queden menos de 2 categorías
     if (categories.length <= 2){
       alert('Debe haber al menos 2 categorías. No se puede eliminar más.');
+      return;
+    }
+    const isLastRecipient = !cat.distributesTotal
+      && categories.filter((category) => !category.distributesTotal).length === 1;
+    if (isLastRecipient && categories.some((category) => category.distributesTotal)) {
+      alert('No puedes eliminar la única categoría que recibe los repartos.');
       return;
     }
 
@@ -1115,24 +1138,30 @@ export function initTicketApp() {
 
   /* ------------ RESUMEN Y COPIAR TOTALES ------------ */
   function updateCategorySummary() {
-    const sums = {};
-    for (const c of categories) sums[c.id] = { n:0, total:0, color:c.color, name:c.name };
-    for (const [key, allocs] of allocationMap.entries()) {
-      const it = itemsByKey.get(key);
-      if (!it) continue;
-      const amount = Number(it.amount) || 0;
-      for (const a of allocs){
-        if (!(a.id in sums)) continue;
-        sums[a.id].n += 1;
-        sums[a.id].total += amount * (Number(a.pct) || 0) / 100;
-      }
-    }
+    const totals = calculateCategoryTotals(categories, allocationMap, itemsByKey);
     const parts = categories.map(c=>{
-      const s = sums[c.id];
-      return `<span class="tag" data-total="${toEUR(s.total)}" title="Click para copiar total de ${escapeHtml(c.name)}" style="border-color:${c.color}22;">
+      const s = totals[c.id];
+      const sourceLabel = s.sourceNames.map(escapeHtml).join(' + ');
+      const displayedTotal = c.distributesTotal ? s.ownTotal : s.finalTotal;
+      const detail = c.distributesTotal
+        ? ''
+        : s.sourceNames.length
+          ? `<span class="shared-detail">${s.distributedShare >= 0 ? '+' : '−'}${toEUR(Math.abs(s.distributedShare))} € de ${sourceLabel}</span>`
+          : '';
+      const title = c.distributesTotal
+        ? `Click para copiar el total de ${c.name}`
+        : s.sourceNames.length
+          ? `Click para copiar el total final de ${c.name}, con el reparto incluido`
+          : `Click para copiar el total de ${c.name}`;
+      return `<span class="tag" data-total="${toEUR(displayedTotal)}" title="${escapeHtml(title)}" style="border-color:${c.color}22;">
                 <span class="cat-swatch" style="background:${c.color}"></span>
-                <strong style="color:${c.color}">${escapeHtml(c.name)}</strong>
-                <span class="n">(${s.n}) ${toEUR(s.total)}</span>
+                <span class="category-total-content">
+                  <span class="category-total-line">
+                    <strong style="color:${c.color}">${escapeHtml(c.name)}</strong>
+                    <span class="n">(${s.count}) ${toEUR(displayedTotal)} €</span>
+                  </span>
+                  ${detail}
+                </span>
               </span>`;
     }).join('');
     $catsum.innerHTML = '<div class="catsum-grid">' + parts + '</div>';
@@ -1152,20 +1181,45 @@ export function initTicketApp() {
   });
 
   /* ------------ EXPORTAR COMO IMAGEN ------------ */
-  function buildExportCard(catObj, items) {
+  function buildExportCard(catObj, items, categoryTotal) {
     const wrap = document.createElement('div');
     wrap.className = 'export-card';
     const total = items.reduce((a,b)=> a + (Number(b.amount)||0), 0);
+    const sourceLabel = categoryTotal?.sourceNames?.join(' + ') || 'reparto';
+    const hasDistributedShare = !catObj.distributesTotal && !!categoryTotal?.sourceNames?.length;
+    const perRecipientTotal = catObj.distributesTotal && categoryTotal?.recipientCount
+      ? categoryTotal.ownTotal / categoryTotal.recipientCount
+      : 0;
+    const totalRows = hasDistributedShare
+      ? `<tr>
+          <td class="total">TOTAL PROPIO</td>
+          <td class="right mono total">${toEUR(categoryTotal.ownTotal)}</td>
+        </tr>
+        <tr>
+          <td class="total">TOTAL CON ${escapeHtml(sourceLabel).toUpperCase()} REPARTIDO</td>
+          <td class="right mono total">${toEUR(categoryTotal.finalTotal)}</td>
+        </tr>`
+      : `<tr>
+          <td class="total">TOTAL</td>
+          <td class="right mono total">${toEUR(total)}</td>
+        </tr>`;
+    const sharedCategoryRows = catObj.distributesTotal
+      ? `<tr>
+          <td class="total">TOTAL</td>
+          <td class="right mono total">${toEUR(total)}</td>
+        </tr>
+        <tr>
+          <td class="total">TOTAL A REPARTIR EN CADA UNA</td>
+          <td class="right mono total">${toEUR(perRecipientTotal)}</td>
+        </tr>`
+      : totalRows;
     if (catObj.masked) {
       wrap.innerHTML = `
       <h2 style="color:${catObj.color}">Lista ${escapeHtml(catObj.name)}</h2>
       <div class="meta">Productos: ${items.length}</div>
       <table>
         <tbody>
-          <tr>
-            <td class="total">TOTAL</td>
-            <td class="right mono total">${toEUR(total)}</td>
-          </tr>
+          ${sharedCategoryRows}
         </tbody>
       </table>
     `;
@@ -1193,11 +1247,33 @@ export function initTicketApp() {
             </tr>
             `;
           }).join('')}
-          <tr>
-            <td></td>
-            <td class="total">TOTAL</td>
-            <td class="right mono total">${toEUR(total)}</td>
-          </tr>
+          ${catObj.distributesTotal
+            ? `<tr>
+                <td></td>
+                <td class="total">TOTAL</td>
+                <td class="right mono total">${toEUR(total)}</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td class="total">TOTAL A REPARTIR EN CADA UNA</td>
+                <td class="right mono total">${toEUR(perRecipientTotal)}</td>
+              </tr>`
+            : hasDistributedShare
+            ? `<tr>
+                <td></td>
+                <td class="total">TOTAL PROPIO</td>
+                <td class="right mono total">${toEUR(categoryTotal.ownTotal)}</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td class="total">TOTAL CON ${escapeHtml(sourceLabel).toUpperCase()} REPARTIDO</td>
+                <td class="right mono total">${toEUR(categoryTotal.finalTotal)}</td>
+              </tr>`
+            : `<tr>
+                <td></td>
+                <td class="total">TOTAL</td>
+                <td class="right mono total">${toEUR(total)}</td>
+              </tr>`}
         </tbody>
       </table>
     `;
@@ -1212,6 +1288,7 @@ export function initTicketApp() {
       if (!confirm(msg)) return;
     }
     const byCat = buildCategoryExportData(categories, allocationMap, itemsByKey);
+    const categoryTotals = calculateCategoryTotals(categories, allocationMap, itemsByKey);
     const wrapper = document.createElement('div');
     wrapper.style.width = '980px';
     wrapper.style.background = '#fff';
@@ -1236,8 +1313,12 @@ export function initTicketApp() {
     let added = 0;
     for (const c of categories) {
       const arr = byCat[c.id] || [];
-      if (!arr.length) continue;
-      const card = buildExportCard(c, arr);
+      const categoryTotal = categoryTotals[c.id];
+      const receivesDistributedTotal = !c.distributesTotal
+        && !!categoryTotal?.sourceNames?.length
+        && Math.abs(categoryTotal.distributedShare) > 0.004;
+      if (!arr.length && !receivesDistributedTotal) continue;
+      const card = buildExportCard(c, arr, categoryTotal);
       card.style.marginBottom = '16px';
       wrapper.appendChild(card);
       added++;
