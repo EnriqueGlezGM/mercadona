@@ -1121,7 +1121,12 @@ export function initTicketApp() {
     <td></td>
     <td class="fw-bold">TOTAL</td>
     <td></td>
-    <td class="text-end mono fw-bold">${toEUR(total)}</td>
+    <td class="text-end mono fw-bold">
+      <button type="button" class="copy-purchase-total" data-copy-total="${toEUR(total)}" title="Copiar total de la compra" aria-label="Copiar total de la compra">
+        <span>${toEUR(total)}</span>
+        <span class="copy-total-icon" aria-hidden="true">📋</span>
+      </button>
+    </td>
   </tr>`;
   if (hiddenTotal){
     html += `<tr class="table-light">
@@ -1178,6 +1183,24 @@ export function initTicketApp() {
       const old = tag.innerHTML;
       tag.innerHTML = old + ' <span class="ms-1">📋</span>';
       setTimeout(() => { tag.innerHTML = old; }, 1000);
+    } catch {
+      alert('No se pudo copiar al portapapeles');
+    }
+  });
+  $tblEl.addEventListener('click', async (ev) => {
+    const button = ev.target.closest('.copy-purchase-total');
+    if (!button) return;
+    ev.stopPropagation();
+    const value = button.getAttribute('data-copy-total') || '';
+    const icon = button.querySelector('.copy-total-icon');
+    try {
+      await navigator.clipboard.writeText(value);
+      if (icon) icon.textContent = '✓';
+      button.title = 'Total copiado';
+      setTimeout(() => {
+        if (icon) icon.textContent = '📋';
+        button.title = 'Copiar total de la compra';
+      }, 1000);
     } catch {
       alert('No se pudo copiar al portapapeles');
     }

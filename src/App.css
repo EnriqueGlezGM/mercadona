@@ -149,6 +149,25 @@ body.bg-light {
   line-height:1.2;
   font-variant-numeric:tabular-nums;
 }
+.copy-purchase-total {
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
+  padding:.2rem .35rem;
+  border:0;
+  border-radius:.4rem;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  font-weight:inherit;
+  cursor:pointer;
+}
+.copy-purchase-total:hover,
+.copy-purchase-total:focus-visible {
+  background:rgba(13,110,253,.1);
+  outline:none;
+}
+.copy-total-icon { font-family:system-ui, sans-serif; font-size:.8rem; }
 
 /* Opciones de categoría */
 .category-options-heading {
